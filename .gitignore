@@ -1,0 +1,33 @@
+# Development
+bin/*
+obj/*
+
+# Project files
+*.dsp
+*.dsw
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Visual Studio
+*.vs
+*.opendb
+*.sdf
+*.map
+*.opensdf
+*.pdb
+*.sbr
+*.suo
+*.tlog
+*.ipch
+*.hm
+*.exp
+*.res
+*.bsc
+*.cnt
+*.p
+*.aps
+*.ncb
+*.opt
+*.plg
