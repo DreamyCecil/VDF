@@ -1,0 +1,9 @@
+key1  "value"
+dummy {}
+key2  "123.456"
+
+key1  "duplicate\n\tkey"
+
+"secret list" {
+  "Half-Life 3"  "confirmed"
+}
