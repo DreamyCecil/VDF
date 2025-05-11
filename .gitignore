@@ -1,6 +1,18 @@
-# Development
-bin/*
-obj/*
+# Output files
+[Bb]in/*
+[Oo]bj/*
+*.a
+*.so
+*.out
+*.lib
+*.dll
+*.exe
+
+# CMake
+[Cc][Mm]ake[Ff]iles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
 
 # Project files
 *.dsp

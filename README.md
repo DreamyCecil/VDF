@@ -33,8 +33,8 @@ See [`DOCUMENTATION.md`](DOCUMENTATION.md) file for more information.
 
 # How to use
 
-1. Include `keyvalues.c` in your project.
-2. Include `keyvalues.h` in your C code.
+1. Include `keyvalues.c` in your project or link the library in your CMake project using `CMakeLists.txt`.
+2. Include `keyvalues.h` in your C/C++ code.
 
 Usage examples can be found [here](DOCUMENTATION.md#Usage-examples).
 
