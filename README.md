@@ -36,7 +36,7 @@ See [`DOCUMENTATION.md`](DOCUMENTATION.md) file for more information.
 1. Include `keyvalues.c` in your project or link the library in your CMake project using `CMakeLists.txt`.
 2. Include `keyvalues.h` in your C/C++ code.
 
-Usage examples can be found [here](DOCUMENTATION.md#Usage-examples).
+Sample code with usage examples can be found [here](samples).
 
 # License
 
