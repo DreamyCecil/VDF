@@ -219,19 +219,27 @@ KV_INLINE void KV_PrintContextSetup(KV_PrintContext *ctx, size_t step) {
   ctx->_current = ctx->_buffer;
 };
 
-KV_INLINE void KV_PrintContextExpand(KV_PrintContext *ctx) {
-  size_t iOffset = ctx->_current - ctx->_buffer;
+KV_INLINE KV_bool KV_PrintContextNeedToExpand(KV_PrintContext *ctx, int iWritten) {
+  size_t iOffset;
+
+  /* String has been written correctly, no need to expand */
+  if (iWritten >= 0 && (size_t)iWritten < ctx->_left)
+  {
+    ctx->_current += iWritten;
+    ctx->_left -= iWritten;
+    return KV_false;
+  }
+
+  /* Expand the buffer */
+  iOffset = ctx->_current - ctx->_buffer;
 
   ctx->_length += ctx->_expansionstep;
   ctx->_buffer = (char *)KV_realloc(ctx->_buffer, ctx->_length);
 
   ctx->_current = ctx->_buffer + iOffset;
   ctx->_left = ctx->_length - iOffset;
-};
 
-KV_INLINE void KV_PrintContextAdvance(KV_PrintContext *ctx, int i) {
-  ctx->_left -= i;
-  ctx->_current += i;
+  return KV_true;
 };
 
 /*********************************************************************************************************************************
@@ -493,18 +501,24 @@ KV_bool KV_PairPrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t depth, 
     strcat(strIdent, indentation);
   }
 
-  /* Print a pair */
+/* Convenience macros that keep reallocating the buffer until the printed string fits */
+#define PRINT1(_Format, _Arg1) \
+  do { \
+    iWritten = snprintf(ctx->_current, ctx->_left, _Format, _Arg1); \
+  } while (KV_PrintContextNeedToExpand(ctx, iWritten));
+
+#define PRINT2(_Format, _Arg1, _Arg2) \
+  do { \
+    iWritten = snprintf(ctx->_current, ctx->_left, _Format, _Arg1, _Arg2); \
+  } while (KV_PrintContextNeedToExpand(ctx, iWritten));
+
+  /* Print a key */
+  PRINT2("%s\"%s\"", strIdent, pair->_key);
+
+  /* Print a string */
   if (!pair->_list) {
     strValue = KV_ConvertEscapeSeq(pair->_value.str);
-
-    /* Keep reprinting and reallocating until it fits */
-    for (;;) {
-      iWritten = snprintf(ctx->_current, ctx->_left, "%s\"%s\"%s\"%s\"\n", strIdent, pair->_key, indentation, strValue);
-      if (iWritten >= 0 && (size_t)iWritten < ctx->_left) break;
-      KV_PrintContextExpand(ctx);
-    }
-
-    KV_PrintContextAdvance(ctx, iWritten);
+    PRINT2("%s\"%s\"\n", indentation, strValue);
 
     KV_free(strValue);
     KV_free(strIdent);
@@ -512,32 +526,20 @@ KV_bool KV_PairPrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t depth, 
   }
 
   /* Print a list */
-
-  /* Keep reprinting and reallocating until it fits */
-  for (;;) {
-    iWritten = snprintf(ctx->_current, ctx->_left, "%s\"%s\"\n%s{\n", strIdent, pair->_key, strIdent);
-    if (iWritten >= 0 && (size_t)iWritten < ctx->_left) break;
-    KV_PrintContextExpand(ctx);
-  }
-
-  KV_PrintContextAdvance(ctx, iWritten);
+  PRINT1("\n%s{\n", strIdent);
 
   if (!KV_ListPrintInternal(pair->_value.list, ctx, depth + 1, indentation)) {
     KV_free(strIdent);
     return KV_false;
   }
 
-  /* Keep reprinting and reallocating until it fits */
-  for (;;) {
-    iWritten = snprintf(ctx->_current, ctx->_left, "%s}\n", strIdent);
-    if (iWritten >= 0 && (size_t)iWritten < ctx->_left) break;
-    KV_PrintContextExpand(ctx);
-  }
-
-  KV_PrintContextAdvance(ctx, iWritten);
+  PRINT1("%s}\n", strIdent);
 
   KV_free(strIdent);
   return KV_true;
+
+#undef PRINT1
+#undef PRINT2
 };
 
 char *KV_PairPrint(KV_Pair *pair, size_t *length, size_t expansionstep, const char *indentation) {
