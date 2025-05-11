@@ -110,6 +110,22 @@ typedef enum _KV_bool {
 } KV_bool;
 
 
+/* Supported data types, synced with KeyValues::types_t from Source SDK 2013 */
+typedef enum _KV_DataType {
+  KV_TYPE_NONE = 0, /* Acts as a list of subpairs; empty by default */
+  KV_TYPE_STRING,
+  /* TODO: Support the rest of the types */
+  KV_TYPE_INT,
+  KV_TYPE_FLOAT,
+  KV_TYPE_PTR,
+  KV_TYPE_WSTRING,
+  KV_TYPE_COLOR,
+  KV_TYPE_UINT64,
+
+  KV_TYPE_NUMTYPES,
+} KV_DataType;
+
+
 typedef struct _KV_Context KV_Context; /* Parser context for reading VDF contents */
 typedef struct _KV_List KV_List; /* An array of key-value pairs */
 typedef struct _KV_Pair KV_Pair; /* A string/list value under some key */
@@ -353,6 +369,10 @@ KV_Pair *KV_GetPair(KV_List *list, size_t i);
 KV_Pair *KV_FindPair(KV_List *list, const char *key);
 
 
+/* Returns the first pair of a specific type under the specified key from a list, otherwise NULL. */
+KV_Pair *KV_FindPairOfType(KV_List *list, const char *key, KV_DataType type);
+
+
 /* Returns a string from the first pair under the specified key from a list, otherwise NULL. */
 char *KV_FindString(KV_List *list, const char *key);
 
@@ -361,16 +381,12 @@ char *KV_FindString(KV_List *list, const char *key);
 KV_List *KV_FindList(KV_List *list, const char *key);
 
 
-/* Checks whether a pair is set up. */
-KV_bool KV_IsPairEmpty(KV_Pair *pair);
-
-
 /* Returns the key name of a pair. */
 char *KV_GetKey(KV_Pair *pair);
 
 
-/* Checks whether a pair has a list value. */
-KV_bool KV_HasListValue(KV_Pair *pair);
+/* Returns data type of a pair value. */
+KV_DataType KV_GetDataType(KV_Pair *pair);
 
 
 /* Returns the string value of a pair. */

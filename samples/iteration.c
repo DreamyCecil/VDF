@@ -45,6 +45,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include <stdio.h>
+#include <string.h>
 #include "../keyvalues.h"
 
 int main(int argc, char *argv[])
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 
   while ((pair = KV_GetPair(list, i++)))
   {
-    printf("\"%s\" is a %s\n", KV_GetKey(pair), KV_HasListValue(pair) ? "list" : "string");
+    printf("\"%s\" is a %s\n", KV_GetKey(pair), (KV_GetDataType(pair) == KV_TYPE_NONE) ? "list" : "string");
   }
 
 

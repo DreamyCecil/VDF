@@ -92,7 +92,7 @@ struct _KV_List {
 
 struct _KV_Pair {
   char *_key; /* Name of the key */
-  KV_bool _list; /* Whether the value is a list of more key-value pairs instead of a single string */
+  KV_DataType _type; /* Data type of a stored value */
 
   union {
     char *str; /* A single value as a string */
@@ -349,8 +349,8 @@ KV_Pair *KV_NewPair(void) {
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
   pair->_key = NULL;
-  pair->_list = KV_false;
-  pair->_value.str = NULL;
+  pair->_type = KV_TYPE_NONE;
+  pair->_value.list = KV_NewList();
 
   return pair;
 };
@@ -360,7 +360,7 @@ KV_Pair *KV_NewPairString(char *key, char *value) {
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
   pair->_key = key;
-  pair->_list = KV_false;
+  pair->_type = KV_TYPE_STRING;
   pair->_value.str = value;
 
   return pair;
@@ -371,7 +371,7 @@ KV_Pair *KV_NewPairList(char *key, KV_List *list) {
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
   pair->_key = key;
-  pair->_list = KV_true;
+  pair->_type = KV_TYPE_NONE;
   pair->_value.list = list;
 
   return pair;
@@ -395,11 +395,21 @@ KV_Pair *KV_PairCopy(KV_Pair *other) {
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
   pair->_key = strdup(other->_key);
+  pair->_type = other->_type;
 
-  if (pair->_list = other->_list) {
-    pair->_value.list = KV_ListCopy(other->_value.list);
-  } else {
-    pair->_value.str = strdup(other->_value.str);
+  switch (pair->_type) {
+    case KV_TYPE_NONE:
+      pair->_value.list = KV_ListCopy(other->_value.list);
+      break;
+
+    case KV_TYPE_STRING:
+      pair->_value.str = strdup(other->_value.str);
+      break;
+
+    default:
+      pair->_type = KV_TYPE_NONE;
+      pair->_value.list = KV_NewList();
+      break;
   }
 
   return pair;
@@ -412,17 +422,22 @@ void KV_PairClear(KV_Pair *pair) {
   }
 
   /* Destroy value */
-  if (pair->_list) {
-    KV_ListDestroy(pair->_value.list);
+  switch (pair->_type) {
+    case KV_TYPE_NONE:
+      KV_ListDestroy(pair->_value.list);
+      break;
 
-  } else if (pair->_value.str) {
-    KV_free(pair->_value.str);
+    case KV_TYPE_STRING:
+      KV_free(pair->_value.str);
+      break;
+
+    default: break;
   }
 
   /* Reset pair state */
   pair->_key = NULL;
-  pair->_list = KV_false;
-  pair->_value.str = NULL;
+  pair->_type = KV_TYPE_NONE;
+  pair->_value.list = KV_NewList();
 };
 
 void KV_PairSetString(KV_Pair *pair, char *key, char *value) {
@@ -430,7 +445,7 @@ void KV_PairSetString(KV_Pair *pair, char *key, char *value) {
   KV_PairClear(pair);
 
   pair->_key = key;
-  pair->_list = KV_false;
+  pair->_type = KV_TYPE_STRING;
   pair->_value.str = value;
 };
 
@@ -439,7 +454,7 @@ void KV_PairSetList(KV_Pair *pair, char *key, KV_List *list) {
   KV_PairClear(pair);
 
   pair->_key = key;
-  pair->_list = KV_true;
+  pair->_type = KV_TYPE_NONE;
   pair->_value.list = list;
 };
 
@@ -448,11 +463,21 @@ void KV_PairReplace(KV_Pair *pair, KV_Pair *other) {
   KV_PairClear(pair);
 
   pair->_key = strdup(other->_key);
+  pair->_type = other->_type;
 
-  if (pair->_list = other->_list) {
-    pair->_value.list = KV_ListCopy(other->_value.list);
-  } else {
-    pair->_value.str = strdup(other->_value.str);
+  switch (pair->_type) {
+    case KV_TYPE_NONE:
+      pair->_value.list = KV_ListCopy(other->_value.list);
+      break;
+
+    case KV_TYPE_STRING:
+      pair->_value.str = strdup(other->_value.str);
+      break;
+
+    default:
+      pair->_type = KV_TYPE_NONE;
+      pair->_value.list = KV_NewList();
+      break;
   }
 };
 
@@ -515,28 +540,37 @@ KV_bool KV_PairPrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t depth, 
   /* Print a key */
   PRINT2("%s\"%s\"", strIdent, pair->_key);
 
-  /* Print a string */
-  if (!pair->_list) {
-    strValue = KV_ConvertEscapeSeq(pair->_value.str);
-    PRINT2("%s\"%s\"\n", indentation, strValue);
+  /* Print a value */
+  switch (pair->_type) {
+    case KV_TYPE_NONE: {
+      PRINT1("\n%s{\n", strIdent);
 
-    KV_free(strValue);
-    KV_free(strIdent);
-    return KV_true;
+      if (!KV_ListPrintInternal(pair->_value.list, ctx, depth + 1, indentation)) {
+        KV_free(strIdent);
+        return KV_false;
+      }
+
+      PRINT1("%s}\n", strIdent);
+
+      KV_free(strIdent);
+    } return KV_true;
+
+    case KV_TYPE_STRING: {
+      strValue = KV_ConvertEscapeSeq(pair->_value.str);
+      PRINT2("%s\"%s\"\n", indentation, strValue);
+
+      KV_free(strValue);
+      KV_free(strIdent);
+    } return KV_true;
+
+    /* Exit the switch */
+    default: break;
   }
 
-  /* Print a list */
-  PRINT1("\n%s{\n", strIdent);
-
-  if (!KV_ListPrintInternal(pair->_value.list, ctx, depth + 1, indentation)) {
-    KV_free(strIdent);
-    return KV_false;
-  }
-
-  PRINT1("%s}\n", strIdent);
-
+  /* Unknown value type */
+  KV_SetError(NULL, "Unknown value type");
   KV_free(strIdent);
-  return KV_true;
+  return KV_false;
 
 #undef PRINT1
 #undef PRINT2
@@ -591,13 +625,27 @@ KV_Pair *KV_FindPair(KV_List *list, const char *key) {
   return NULL;
 };
 
+KV_Pair *KV_FindPairOfType(KV_List *list, const char *key, KV_DataType type) {
+  size_t i;
+  KV_Pair *pair;
+
+  for (i = 0; i < list->_count; ++i) {
+    pair = list->_pairs[i];
+    if (pair->_type != type) continue;
+
+    if (!strcmp(pair->_key, key)) return pair;
+  }
+
+  return NULL;
+};
+
 char *KV_FindString(KV_List *list, const char *key) {
   size_t i;
   KV_Pair *pair;
 
   for (i = 0; i < list->_count; ++i) {
     pair = list->_pairs[i];
-    if (pair->_list) continue;
+    if (pair->_type != KV_TYPE_STRING) continue;
 
     if (!strcmp(pair->_key, key)) return pair->_value.str;
   }
@@ -611,7 +659,7 @@ KV_List *KV_FindList(KV_List *list, const char *key) {
 
   for (i = 0; i < list->_count; ++i) {
     pair = list->_pairs[i];
-    if (!pair->_list) continue;
+    if (pair->_type != KV_TYPE_NONE) continue;
 
     if (!strcmp(pair->_key, key)) return pair->_value.list;
   }
@@ -619,21 +667,12 @@ KV_List *KV_FindList(KV_List *list, const char *key) {
   return NULL;
 };
 
-KV_bool KV_IsPairEmpty(KV_Pair *pair) {
-  if (!pair->_key) return KV_false;
-
-  if (pair->_list) {
-    return pair->_value.list ? KV_true : KV_false;
-  }
-  return pair->_value.str ? KV_true : KV_false;
-};
-
 char *KV_GetKey(KV_Pair *pair) {
   return pair->_key;
 };
 
-KV_bool KV_HasListValue(KV_Pair *pair) {
-  return pair->_list;
+KV_DataType KV_GetDataType(KV_Pair *pair) {
+  return pair->_type;
 };
 
 char *KV_GetString(KV_Pair *pair) {

@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
   list = KV_FindList(list, "dummy");
   pair = KV_FindPair(list, "hello");
 
-  printf("'this/dummy/hello' = %s\n", KV_HasListValue(pair) ? "{list}" : KV_GetString(pair));
+  printf("'this/dummy/hello' = %s\n", (KV_GetDataType(pair) == KV_TYPE_NONE) ? "{list}" : KV_GetString(pair));
 
 
   KV_ListDestroy(listFile);
