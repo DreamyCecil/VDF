@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
   for (i = 0; i < ct; ++i)
   {
     char *strKey = KV_GetKey(aPairs[i]);
-    KV_PairSetString(aPairs[i], strdup(strKey), strdup("asdf"));
+    KV_PairSetString(aPairs[i], strKey, "asdf");
   }
 
 

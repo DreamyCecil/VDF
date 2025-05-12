@@ -78,6 +78,9 @@ extern "C" {
   #ifndef KV_free
     #error Please define memory freeing function for 'KV_free'
   #endif
+  #ifndef KV_strdup
+    #error Please define string duplication function for 'KV_strdup'
+  #endif
 
 #else
   /* Use default memory management functions */
@@ -94,6 +97,9 @@ extern "C" {
   #endif
   #ifndef KV_free
     #define KV_free free
+  #endif
+  #ifndef KV_strdup
+    #define KV_strdup strdup
   #endif
 #endif
 
@@ -258,31 +264,18 @@ char *KV_ListPrint(KV_List *list, size_t *length, size_t expansionstep, const ch
 KV_Pair *KV_NewPair(void);
 
 
-/* Creates a new key-value pair with a key name and a string value by taking ownership of them.
+/* Creates a new key-value pair with a key name and a string value.
  * It is functionally identical to calling KV_PairNew() and then KV_PairSetString().
  * 'key' and 'value' should *not* be freed after this!
  */
-KV_Pair *KV_NewPairString(char *key, char *value);
-
-
-/* Creates a new key-value pair with a key name and a list value by taking ownership of them.
- * It is functionally identical to calling KV_PairNew() and then KV_PairSetList().
- * 'key' should *not* be freed and KV_ListDestroy() should *not* be called on 'list' after this!
- */
-KV_Pair *KV_NewPairList(char *key, KV_List *list);
-
-
-/* Creates a new key-value pair with a key name and a string value.
- * It is functionally identical to calling KV_NewPairString() with strdup() around the key and value strings.
- */
-KV_Pair *KV_NewPairStringDup(const char *key, const char *value);
+KV_Pair *KV_NewPairString(const char *key, const char *value);
 
 
 /* Creates a new key-value pair with a key name and a list value.
- * It is functionally identical to calling KV_NewPairList() with strdup() around the key string.
+ * It is functionally identical to calling KV_PairNew() and then KV_PairSetList().
  * KV_ListDestroy() should *not* be called on 'list' after this!
  */
-KV_Pair *KV_NewPairListDup(const char *key, KV_List *list);
+KV_Pair *KV_NewPairList(const char *key, KV_List *list);
 
 
 /* Frees all memory used by a previously created key-value pair, recursively for all list values.
@@ -302,17 +295,16 @@ void KV_PairClear(KV_Pair *pair);
 
 
 /* Sets a new key-value pair by taking ownership of the key and value strings.
- * If the pair was already set up, it is automatically cleared using KV_PairClear().
- * 'key' and 'value' should *not* be freed after this!
+ * If the pair was already set up, the previous data is automatically cleared.
  */
-void KV_PairSetString(KV_Pair *pair, char *key, char *value);
+void KV_PairSetString(KV_Pair *pair, const char *key, const char *value);
 
 
 /* Sets a new key-value pair by taking ownership of the key string and the list value.
- * If the pair was already set up, it is automatically cleared using KV_PairClear().
- * 'key' should *not* be freed and KV_ListDestroy() should *not* be called on 'list' after this!
+ * If the pair was already set up, the previous data is automatically cleared.
+ * KV_ListDestroy() should *not* be called on 'list' after this!
  */
-void KV_PairSetList(KV_Pair *pair, char *key, KV_List *list);
+void KV_PairSetList(KV_Pair *pair, const char *key, KV_List *list);
 
 
 /* Replace contents of one pair with the contents from another pair by making a full copy of them.

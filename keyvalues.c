@@ -282,7 +282,7 @@ void KV_ListClear(KV_List *list) {
     size_t ct = list->_count;
 
     while (ct --> 0) {
-      KV_PairClear(list->_pairs[ct]);
+      KV_PairDestroy(list->_pairs[ct]);
     }
 
     /* Free array of pairs */
@@ -355,67 +355,30 @@ KV_Pair *KV_NewPair(void) {
   return pair;
 };
 
-KV_Pair *KV_NewPairString(char *key, char *value) {
+KV_Pair *KV_NewPairString(const char *key, const char *value) {
   /* Allocate the pair and set new values */
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
-  pair->_key = key;
+  pair->_key = KV_strdup(key);
   pair->_type = KV_TYPE_STRING;
-  pair->_value.str = value;
+  pair->_value.str = KV_strdup(value);
 
   return pair;
 };
 
-KV_Pair *KV_NewPairList(char *key, KV_List *list) {
+KV_Pair *KV_NewPairList(const char *key, KV_List *list) {
   /* Allocate the pair and set new values */
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
-  pair->_key = key;
+  pair->_key = KV_strdup(key);
   pair->_type = KV_TYPE_NONE;
   pair->_value.list = list;
 
   return pair;
 };
 
-KV_Pair *KV_NewPairStringDup(const char *key, const char *value) {
-  return KV_NewPairString(strdup(key), strdup(value));
-};
-
-KV_Pair *KV_NewPairListDup(const char *key, KV_List *list) {
-  return KV_NewPairList(strdup(key), list);
-};
-
-void KV_PairDestroy(KV_Pair *pair) {
-  /* Clear the pair and free it */
-  KV_PairClear(pair);
-  KV_free(pair);
-};
-
-KV_Pair *KV_PairCopy(KV_Pair *other) {
-  KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
-
-  pair->_key = strdup(other->_key);
-  pair->_type = other->_type;
-
-  switch (pair->_type) {
-    case KV_TYPE_NONE:
-      pair->_value.list = KV_ListCopy(other->_value.list);
-      break;
-
-    case KV_TYPE_STRING:
-      pair->_value.str = strdup(other->_value.str);
-      break;
-
-    default:
-      pair->_type = KV_TYPE_NONE;
-      pair->_value.list = KV_NewList();
-      break;
-  }
-
-  return pair;
-};
-
-void KV_PairClear(KV_Pair *pair) {
+/* Free all memory associated with the pair without resetting any fields */
+KV_INLINE void KV_PairFreeMemory(KV_Pair *pair) {
   /* Destroy key */
   if (pair->_key) {
     KV_free(pair->_key);
@@ -433,36 +396,18 @@ void KV_PairClear(KV_Pair *pair) {
 
     default: break;
   }
-
-  /* Reset pair state */
-  pair->_key = NULL;
-  pair->_type = KV_TYPE_NONE;
-  pair->_value.list = KV_NewList();
 };
 
-void KV_PairSetString(KV_Pair *pair, char *key, char *value) {
-  /* Clear last pair before setting a new one */
-  KV_PairClear(pair);
-
-  pair->_key = key;
-  pair->_type = KV_TYPE_STRING;
-  pair->_value.str = value;
+void KV_PairDestroy(KV_Pair *pair) {
+  /* Clear the pair and free it */
+  KV_PairFreeMemory(pair);
+  KV_free(pair);
 };
 
-void KV_PairSetList(KV_Pair *pair, char *key, KV_List *list) {
-  /* Clear last pair before setting a new one */
-  KV_PairClear(pair);
+KV_Pair *KV_PairCopy(KV_Pair *other) {
+  KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
 
-  pair->_key = key;
-  pair->_type = KV_TYPE_NONE;
-  pair->_value.list = list;
-};
-
-void KV_PairReplace(KV_Pair *pair, KV_Pair *other) {
-  /* Clear last pair before setting a new one */
-  KV_PairClear(pair);
-
-  pair->_key = strdup(other->_key);
+  pair->_key = KV_strdup(other->_key);
   pair->_type = other->_type;
 
   switch (pair->_type) {
@@ -471,7 +416,60 @@ void KV_PairReplace(KV_Pair *pair, KV_Pair *other) {
       break;
 
     case KV_TYPE_STRING:
-      pair->_value.str = strdup(other->_value.str);
+      pair->_value.str = KV_strdup(other->_value.str);
+      break;
+
+    default:
+      pair->_type = KV_TYPE_NONE;
+      pair->_value.list = KV_NewList();
+      break;
+  }
+
+  return pair;
+};
+
+void KV_PairClear(KV_Pair *pair) {
+  /* Free all memory */
+  KV_PairFreeMemory(pair);
+
+  /* Reset pair state */
+  pair->_key = NULL;
+  pair->_type = KV_TYPE_NONE;
+  pair->_value.list = KV_NewList();
+};
+
+void KV_PairSetString(KV_Pair *pair, const char *key, const char *value) {
+  /* Clear last pair before setting a new one */
+  KV_PairFreeMemory(pair);
+
+  pair->_key = KV_strdup(key);
+  pair->_type = KV_TYPE_STRING;
+  pair->_value.str = KV_strdup(value);
+};
+
+void KV_PairSetList(KV_Pair *pair, const char *key, KV_List *list) {
+  /* Clear last pair before setting a new one */
+  KV_PairFreeMemory(pair);
+
+  pair->_key = KV_strdup(key);
+  pair->_type = KV_TYPE_NONE;
+  pair->_value.list = list;
+};
+
+void KV_PairReplace(KV_Pair *pair, KV_Pair *other) {
+  /* Clear last pair before setting a new one */
+  KV_PairFreeMemory(pair);
+
+  pair->_key = KV_strdup(other->_key);
+  pair->_type = other->_type;
+
+  switch (pair->_type) {
+    case KV_TYPE_NONE:
+      pair->_value.list = KV_ListCopy(other->_value.list);
+      break;
+
+    case KV_TYPE_STRING:
+      pair->_value.str = KV_strdup(other->_value.str);
       break;
 
     default:
@@ -872,7 +870,7 @@ KV_List *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
         if (ctx->_overwrite) {
           KV_PairSetList(pairFind, strKey, listTemp);
 
-          /* Pair setup takes ownership of the string, so don't free it */
+          KV_free(strKey);
           strKey = NULL;
           continue;
         }
@@ -886,7 +884,7 @@ KV_List *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
 
       KV_ListAppend(list, KV_NewPairList(strKey, listTemp));
 
-      /* Pair setup takes ownership of the string, so don't free it */
+      KV_free(strKey);
       strKey = NULL;
       continue;
     }
@@ -970,7 +968,8 @@ KV_List *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
       if (ctx->_overwrite) {
         KV_PairSetString(pairFind, strKey, strTemp);
 
-        /* Pair setup takes ownership of the strings, so don't free them */
+        KV_free(strKey);
+        KV_free(strTemp);
         strKey = NULL;
         strTemp = NULL;
         continue;
@@ -986,7 +985,8 @@ KV_List *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
     /* Add new key-value pair */
     KV_ListAppend(list, KV_NewPairString(strKey, strTemp));
 
-    /* Pair setup takes ownership of the strings, so don't free them */
+    KV_free(strKey);
+    KV_free(strTemp);
     strKey = NULL;
     strTemp = NULL;
   }

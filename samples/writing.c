@@ -55,15 +55,15 @@ int main(int argc, char *argv[])
   KV_Pair *pair;
 
   // Add one pair
-  pair = KV_NewPairStringDup("Key1", "Hello, World!");
+  pair = KV_NewPairString("Key1", "Hello, World!");
   KV_ListAppend(list, pair);
 
   // Add an empty list
-  pair = KV_NewPairListDup("List", KV_NewList());
+  pair = KV_NewPairList("List", KV_NewList());
   KV_ListAppend(list, pair);
 
   // Add a pair to that empty list
-  KV_ListAppend(KV_GetList(pair), KV_NewPairStringDup("Key2", "123.456"));
+  KV_ListAppend(KV_GetList(pair), KV_NewPairString("Key2", "123.456"));
 
   // Save list into a file
   KV_Save(list, "out.txt");

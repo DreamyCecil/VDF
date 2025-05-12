@@ -111,7 +111,7 @@ Macros are specific commands that are executed after parsing a proper key-value 
 ```
 
 # Memory management
-If you wish to manage the parser's memory yourself instead of using the standard `malloc`, `calloc`, `realloc` & `free` functions, you can redefine the following macros with your own functions before including `keyvalues.h`.
+If you wish to manage the parser's memory yourself instead of using the standard `malloc`, `free` and similar functions, you can redefine the following macros with your own functions before including `keyvalues.h`.
 
 | Macro        | Default value | Purpose |
 | ------------ | ------------- | ------- |
@@ -119,6 +119,7 @@ If you wish to manage the parser's memory yourself instead of using the standard
 | `KV_calloc`  | `calloc`      | Random memory allocation with nullified data. |
 | `KV_realloc` | `realloc`     | Random memory reallocation that preserves previous data. |
 | `KV_free`    | `free`        | Random memory freeing. |
+| `KV_strdup`  | `strdup`      | Duplication of a null-terminated string. |
 
 > [!IMPORTANT]
 > You have to redefine all of them together to ensure proper behavior. If at least one of the macros isn't redefined while the others are, the compiler will display an error.

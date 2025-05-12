@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 
   // Add the list to itself (copies all pairs up until this point)
-  pair = KV_NewPairListDup("this", KV_ListCopy(listFile));
+  pair = KV_NewPairList("this", KV_ListCopy(listFile));
 
   KV_ListAppend(listFile, pair);
 
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
   list = KV_GetList(pair);
   list = KV_FindList(list, "dummy");
 
-  KV_ListAppend(list, KV_NewPairStringDup("hello", "hi!"));
+  KV_ListAppend(list, KV_NewPairString("hello", "hi!"));
 
 
   // Check if there's a pair under the "Test" key
