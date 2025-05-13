@@ -442,24 +442,35 @@ void KV_PairClear(KV_Pair *pair) {
 };
 
 void KV_PairSetString(KV_Pair *pair, const char *key, const char *value) {
+  /* Copy the strings beforehand in case they are the same, otherwise the data is wiped before KV_strdup() */
+  char *keyCopy;
+  char *valueCopy;
+  keyCopy = KV_strdup(key);
+  valueCopy = KV_strdup(value);
+
   /* Clear last pair before setting a new one */
   KV_PairFreeMemory(pair);
 
-  pair->_key = KV_strdup(key);
+  pair->_key = keyCopy;
   pair->_type = KV_TYPE_STRING;
-  pair->_value.str = KV_strdup(value);
+  pair->_value.str = valueCopy;
 };
 
 void KV_PairSetList(KV_Pair *pair, const char *key, KV_List *list) {
+  /* Copy the string beforehand in case it is the same, otherwise the data is wiped before KV_strdup() */
+  char *keyCopy = KV_strdup(key);
+
   /* Clear last pair before setting a new one */
   KV_PairFreeMemory(pair);
 
-  pair->_key = KV_strdup(key);
+  pair->_key = keyCopy;
   pair->_type = KV_TYPE_NONE;
   pair->_value.list = list;
 };
 
 void KV_PairReplace(KV_Pair *pair, KV_Pair *other) {
+  if (pair == other) return;
+
   /* Clear last pair before setting a new one */
   KV_PairFreeMemory(pair);
 
@@ -488,6 +499,8 @@ void KV_PairSwap(KV_Pair *pair1, KV_Pair *pair2) {
   KV_List *parent1, *parent2;
   KV_Pair *prev1, *prev2;
   KV_Pair *next1, *next2;
+
+  if (pair1 == pair2) return;
 
   /* Remember the neighbors */
   parent1 = pair1->_parent;
