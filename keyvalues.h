@@ -236,12 +236,6 @@ KV_List *KV_ListCopy(KV_List *list);
 void KV_ListClear(KV_List *list);
 
 
-/* Adds a new pair to the end of the list by taking ownership of the provided pointer.
- * KV_PairDestroy() should *not* be called on 'pair' after this!
- */
-void KV_ListAppend(KV_List *list, KV_Pair *pair);
-
-
 /* Prints a formatted list of key-value pairs into a null-terminated character buffer.
  * The returned character buffer must be manually freed when not needed anymore.
  * Returns NULL on error; call KV_GetError() for more information.
@@ -332,7 +326,7 @@ char *KV_PairPrint(KV_Pair *pair, size_t *length, size_t expansionstep, const ch
 
 
 /*********************************************************************************************************************************
- * Value access
+ * Doubly linked lists
  * NOTE: These functions *do not* perform any safety checks and may lead to undefined behavior if not used properly!
  *********************************************************************************************************************************/
 
@@ -345,16 +339,10 @@ KV_bool KV_IsListEmpty(KV_List *list);
 size_t KV_ListCount(KV_List *list);
 
 
-/* Returns array of pairs from a list.
- * Can be used for sorting purposes along with KV_ListCount(), e.g. via qsort()
+/* Returns an n-th pair from the chain in a list, otherwise NULL.
+ * Can be used for iterating through the entire chain until it returns the first NULL.
  */
-KV_Pair **KV_ListArray(KV_List *list);
-
-
-/* Returns a pair under the specified array index from a list, otherwise NULL.
- * Can be used for iterating through the entire array until it returns the first NULL.
- */
-KV_Pair *KV_GetPair(KV_List *list, size_t i);
+KV_Pair *KV_GetPair(KV_List *list, size_t n);
 
 
 /* Returns the first pair under the specified key from a list, otherwise NULL. */
@@ -371,6 +359,46 @@ char *KV_FindString(KV_List *list, const char *key);
 
 /* Returns a list from the first pair under the specified key from a list, otherwise NULL. */
 KV_List *KV_FindList(KV_List *list, const char *key);
+
+
+/* Returns the first subpair from a list. */
+KV_Pair *KV_GetHead(KV_List *list);
+
+
+/* Returns the last subpair from a list. */
+KV_Pair *KV_GetTail(KV_List *list);
+
+
+/* Adds a new pair to the beginning of the list by taking ownership of the provided pointer.
+ * KV_PairDestroy() should *not* be called on 'pair' after this!
+ */
+void KV_ListAddHead(KV_List *list, KV_Pair *pair);
+
+
+/* Adds a new pair to the end of the list by taking ownership of the provided pointer.
+ * KV_PairDestroy() should *not* be called on 'pair' after this!
+ */
+void KV_ListAddTail(KV_List *list, KV_Pair *pair);
+
+
+/* Insert this pair before another pair, which may be in the middle of an existing chain. */
+void KV_PairInsertBefore(KV_Pair *pair, KV_Pair *other);
+
+
+/* Insert this pair after another pair, which may be in the middle of an existing chain. */
+void KV_PairInsertAfter(KV_Pair *pair, KV_Pair *other);
+
+
+/* Expunge this pair from whatever chain it's currently in. */
+void KV_PairExpunge(KV_Pair *pair);
+
+
+/* Returns the previous neighbor of a pair. */
+KV_Pair *KV_GetPrev(KV_Pair *pair);
+
+
+/* Returns the next neighbor of a pair. */
+KV_Pair *KV_GetNext(KV_Pair *pair);
 
 
 /* Returns the key name of a pair. */

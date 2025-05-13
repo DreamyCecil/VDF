@@ -60,24 +60,31 @@ int main(int argc, char *argv[])
   KV_Pair *pair;
 
 
+  // Create an array that will contain references to pairs with list values
+  size_t ct = KV_ListCount(list);
+  KV_Pair **aLists = (KV_Pair **)KV_calloc(ct, sizeof(KV_Pair *));
+
+
   // List each pair until there is no more
   size_t i = 0;
   printf("-- Pairs in the list:\n");
 
   while ((pair = KV_GetPair(list, i++)))
   {
-    printf("\"%s\" is a %s\n", KV_GetKey(pair), (KV_GetDataType(pair) == KV_TYPE_NONE) ? "list" : "string");
+    // Remember lists in the process
+    int bList = (KV_GetDataType(pair) == KV_TYPE_NONE);
+    if (bList) aLists[i-1] = pair;
+
+    printf("\"%s\" is a %s\n", KV_GetKey(pair), bList ? "list" : "string");
   }
 
 
   // Replace value in each pair with the same string
-  KV_Pair **aPairs = KV_ListArray(list);
-  size_t ct = KV_ListCount(list);
+  KV_Pair *iter = KV_GetHead(list);
 
-  for (i = 0; i < ct; ++i)
+  for (; iter; iter = KV_GetNext(iter))
   {
-    char *strKey = KV_GetKey(aPairs[i]);
-    KV_PairSetString(aPairs[i], strKey, "asdf");
+    KV_PairSetString(iter, KV_GetKey(iter), "asdf");
   }
 
 
@@ -85,15 +92,16 @@ int main(int argc, char *argv[])
   char *buffer;
   printf("\n-- List values after replacement:\n");
 
-  buffer = KV_PairPrint(KV_FindPair(list, "dummy"), NULL, 1024, " = ");
-  printf("%s", buffer);
-  KV_free(buffer);
+  for (i = 0; i < ct; ++i) {
+    if (!aLists[i]) continue;
 
-  buffer = KV_PairPrint(KV_FindPair(list, "secret list"), NULL, 1024, " = ");
-  printf("%s", buffer);
-  KV_free(buffer);
+    buffer = KV_PairPrint(aLists[i], NULL, 1024, " = ");
+    printf("%s", buffer);
+    KV_free(buffer);
+  }
 
 
+  KV_free(aLists);
   KV_ListDestroy(list);
 
   return 0;
