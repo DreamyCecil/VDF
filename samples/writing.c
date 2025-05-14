@@ -65,6 +65,11 @@ int main(int argc, char *argv[])
   // Add a pair to that empty list
   KV_AddTail(sub, KV_NewString("Key2", "123.456"));
 
+  // Print out the list
+  char *buffer = KV_Print(list, NULL, 1024, "\t");
+  printf("-- Saving the following list into 'out.txt':\n%s", buffer);
+  KV_free(buffer);
+
   // Save list into a file
   KV_Save(list, "out.txt");
 
