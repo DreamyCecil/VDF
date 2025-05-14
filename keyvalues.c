@@ -68,6 +68,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "keyvalues.h"
 
+#ifdef VDF_MANAGE_MEMORY
+  void *(*KV_malloc)(size_t bytes)                = malloc;
+  void *(*KV_calloc)(size_t ct, size_t elemSize)  = calloc;
+  void *(*KV_realloc)(void *memory, size_t bytes) = realloc;
+  void  (*KV_free)(void *memory)                  = free;
+  char *(*KV_strdup)(const char *str)             = strdup;
+#endif
+
 /* Check if it's a full path string */
 KV_INLINE KV_bool IsPathStringAbsolute(const char *str) {
 #ifdef _WIN32

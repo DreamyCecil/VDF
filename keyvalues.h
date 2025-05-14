@@ -56,6 +56,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" {
 #endif
 
+#include <stdlib.h>
+
 #ifdef __STDC_VERSION__
   #define KV_INLINE static inline
 #else
@@ -63,44 +65,21 @@ extern "C" {
 #endif
 
 
-/* You can redefine this functions to provide your own means of memory management */
-#if defined(KV_malloc) || defined(KV_calloc) || defined(KV_realloc) || defined(KV_free)
-  /* Make sure all memory management functions are redefined */
-  #ifndef KV_malloc
-    #error Please define memory allocation function for 'KV_malloc'
-  #endif
-  #ifndef KV_calloc
-    #error Please define memory allocation function with nullifying for 'KV_calloc'
-  #endif
-  #ifndef KV_realloc
-    #error Please define memory reallocation function for 'KV_realloc'
-  #endif
-  #ifndef KV_free
-    #error Please define memory freeing function for 'KV_free'
-  #endif
-  #ifndef KV_strdup
-    #error Please define string duplication function for 'KV_strdup'
-  #endif
+/* You can provide your own means of memory management by setting all of these functions */
+#ifdef VDF_MANAGE_MEMORY
+  extern void *(*KV_malloc)(size_t bytes);
+  extern void *(*KV_calloc)(size_t ct, size_t elemSize);
+  extern void *(*KV_realloc)(void *memory, size_t bytes);
+  extern void  (*KV_free)(void *memory);
+  extern char *(*KV_strdup)(const char *str);
 
 #else
   /* Use default memory management functions */
-  #include <stdlib.h>
-
-  #ifndef KV_malloc
-    #define KV_malloc malloc
-  #endif
-  #ifndef KV_calloc
-    #define KV_calloc calloc
-  #endif
-  #ifndef KV_realloc
-    #define KV_realloc realloc
-  #endif
-  #ifndef KV_free
-    #define KV_free free
-  #endif
-  #ifndef KV_strdup
-    #define KV_strdup strdup
-  #endif
+  #define KV_malloc  malloc
+  #define KV_calloc  calloc
+  #define KV_realloc realloc
+  #define KV_free    free
+  #define KV_strdup  strdup
 #endif
 
 

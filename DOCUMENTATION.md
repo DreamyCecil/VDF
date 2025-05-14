@@ -111,15 +111,18 @@ Macros are specific commands that are executed after parsing a proper key-value 
 ```
 
 # Memory management
-If you wish to manage the parser's memory yourself instead of using the standard `malloc`, `free` and similar functions, you can redefine the following macros with your own functions before including `keyvalues.h`.
+You can manage the library memory yourself instead of using the standard `malloc`, `free` and similar functions, if you so choose.
 
-| Macro        | Default value | Purpose |
-| ------------ | ------------- | ------- |
-| `KV_malloc`  | `malloc`      | Random memory allocation. |
-| `KV_calloc`  | `calloc`      | Random memory allocation with nullified data. |
-| `KV_realloc` | `realloc`     | Random memory reallocation that preserves previous data. |
-| `KV_free`    | `free`        | Random memory freeing. |
-| `KV_strdup`  | `strdup`      | Duplication of a null-terminated string. |
+1. Compile the library with an extra `VDF_MANAGE_MEMORY` preprocessor definition (`-DVDF_MANAGE_MEMORY=1` CMake flag).
+2. Set the following function pointers to your own functions:
+
+| Function pointer | Default value | Purpose |
+| ---------------- | ------------- | ------- |
+| `KV_malloc`      | `malloc`      | Random memory allocation. |
+| `KV_calloc`      | `calloc`      | Random memory allocation with nullified data. |
+| `KV_realloc`     | `realloc`     | Random memory reallocation that preserves previous data. |
+| `KV_free`        | `free`        | Random memory freeing. |
+| `KV_strdup`      | `strdup`      | Duplication of a null-terminated string. |
 
 > [!IMPORTANT]
-> You have to redefine all of them together to ensure proper behavior. If at least one of the macros isn't redefined while the others are, the compiler will display an error.
+> You have to redefine all of them together to ensure proper behavior.
