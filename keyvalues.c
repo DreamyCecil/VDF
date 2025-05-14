@@ -1059,32 +1059,59 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
   return str;
 };
 
-KV_INLINE KV_bool KV_ParseJunkInternal(KV_Context *ctx) {
-  /* Count line breaks */
+/* Count line breaks */
+KV_INLINE KV_bool KV_ParseLineBreak(KV_Context *ctx)
+{
   if (*ctx->_pch == '\n') {
     ++ctx->_pch;
     ++ctx->_line;
     return KV_true;
   }
 
-  /* Comments: Ignore all characters until a line break */
+  return KV_false;
+};
+
+/* Comments: Ignore all characters in CPP-styled single-line comments or in C-styled block comments */
+/* NOTE: Single '/' characters with no '/' or '*' afterwards count as "empty" comments and are simply ignored */
+KV_INLINE KV_bool KV_ParseComments(KV_Context *ctx)
+{
+  /* Not a comment */
+  if (*ctx->_pch != '/') return KV_false;
+
+  ++ctx->_pch;
+  if (KV_ContextBufferEnded(ctx)) return KV_true;
+
+  /* C++ comments */
   if (*ctx->_pch == '/') {
     ++ctx->_pch;
 
+    /* Expect a line break down the road */
     while (!KV_ContextBufferEnded(ctx) && *ctx->_pch != '\n') {
       ++ctx->_pch;
     }
 
-    return KV_true;
-  }
-
-  /* Skip whitespaces */
-  if (isspace(*ctx->_pch)) {
+  /* C comments */
+  } else if (*ctx->_pch == '*') {
     ++ctx->_pch;
-    return KV_true;
+
+    /* Expect block comment closing down the road */
+    while (!KV_ContextBufferEnded(ctx)) {
+      /* Keep counting line breaks */
+      if (KV_ParseLineBreak(ctx)) continue;
+
+      if (*ctx->_pch == '*') {
+        ++ctx->_pch;
+
+        /* Close the block comment or pretend that unclosed ones are still comments */
+        if (KV_ContextBufferEnded(ctx) || *ctx->_pch == '/') break;
+      }
+
+      ++ctx->_pch;
+    }
   }
 
-  return KV_false;
+  /* Ignored enough characters */
+  return KV_true;
 };
 
 KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
@@ -1100,8 +1127,15 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   strKey = NULL; /* Set to a string if expecting a value string for a complete pair */
 
   while (!KV_ContextBufferEnded(ctx)) {
-    /* Parse unimportant junk */
-    if (KV_ParseJunkInternal(ctx)) continue;
+    /* Parse line breaks and comments */
+    if (KV_ParseLineBreak(ctx)) continue;
+    if (KV_ParseComments(ctx)) continue;
+
+    /* Skip whitespaces */
+    if (isspace(*ctx->_pch)) {
+      ++ctx->_pch;
+      continue;
+    }
 
     pchCheck = ctx->_pch++;
 

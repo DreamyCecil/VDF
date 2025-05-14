@@ -23,16 +23,24 @@ Sample code with usage examples can be found [here](samples).
 The kind of input data that the parser expects is very simple. It has been implemented in respect to the description on the Valve Developer Community wiki: https://developer.valvesoftware.com/wiki/KeyValues
 
 ## Comments
-This format supports single-line CPP-styled comments on any line. Based on the wiki article, they can start with just a single `/` character, however it's still advised to use double slashes (`//`) for consistency.
+The original format only supports CPP-styled single-line comments but this library also supports C-styled block comments.
 
 **Valid comments:**
 ```js
-/ Comment with one slash (not recommended)
-// Comment with double slash (recommended)
-/* Block comments aren't supported */ and thus these tokens afterwards are ignored
+// C++ single-line comment
+/* C block comment */ "key1"  "value1"
 
-"key" // Next line contains a value for this key
-"value"
+/*
+  Multi-line
+  comment
+*/
+"key2"  "value2"
+
+// Single slashes are ignored instead of being parsed as comments or as strings
+/ "this is" / "not a comment" // "and this is"  "a comment"
+
+"key3" // Next line contains a value for this key
+"value3"
 ```
 
 ## Key-value pairs
