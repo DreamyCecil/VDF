@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   KV_ContextSetFlags(&ctx, KV_true, KV_false, KV_true);
 
   // Parse within the context
-  KV_List *list = KV_Parse(&ctx);
+  KV_Pair *list = KV_Parse(&ctx);
 
   // Output error, if any
   if (!list) {
@@ -73,10 +73,10 @@ int main(int argc, char *argv[])
   }
 
   // Print a value with escape sequences in it
-  printf("key1 = '%s'\n", KV_FindString(list, "key1"));
+  printf("key1 = '%s'\n", KV_FindString(list, "key1", "(not a string)"));
 
   // Destroy created list
-  KV_ListDestroy(list);
+  KV_PairDestroy(list);
 
   return 0;
 };

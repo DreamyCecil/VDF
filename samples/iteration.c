@@ -50,41 +50,41 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char *argv[])
 {
-  KV_List *list = KV_ParseFile("sample.vdf");
+  KV_Pair *list = KV_ParseFile("sample.vdf");
 
   if (!list) {
     fprintf(stderr, "%s\n", KV_GetError());
     return 1;
   }
 
-  KV_Pair *pair;
+  KV_Pair *sub;
 
 
-  // Create an array that will contain references to pairs with list values
-  size_t ct = KV_ListCount(list);
+  // Create an array that will contain references to pairs with subpairs
+  size_t ct = KV_GetNodeCount(list);
   KV_Pair **aLists = (KV_Pair **)KV_calloc(ct, sizeof(KV_Pair *));
 
 
-  // List each pair until there is no more
+  // List each subpair until there is no more
   size_t i = 0;
-  printf("-- Pairs in the list:\n");
+  printf("-- Subpairs:\n");
 
-  while ((pair = KV_GetPair(list, i++)))
+  while ((sub = KV_GetPair(list, i++)))
   {
     // Remember lists in the process
-    int bList = (KV_GetDataType(pair) == KV_TYPE_NONE);
-    if (bList) aLists[i-1] = pair;
+    int bList = (KV_GetDataType(sub) == KV_TYPE_NONE);
+    if (bList) aLists[i-1] = sub;
 
-    printf("\"%s\" is a %s\n", KV_GetKey(pair), bList ? "list" : "string");
+    printf("\"%s\" is a %s\n", KV_GetKey(sub), bList ? "list" : "string");
   }
 
 
-  // Replace value in each pair with the same string
+  // Replace value in each subpair with the same string
   KV_Pair *iter = KV_GetHead(list);
 
   for (; iter; iter = KV_GetNext(iter))
   {
-    KV_PairSetString(iter, KV_GetKey(iter), "asdf");
+    KV_SetString(iter, KV_GetKey(iter), "asdf");
   }
 
 
@@ -95,14 +95,14 @@ int main(int argc, char *argv[])
   for (i = 0; i < ct; ++i) {
     if (!aLists[i]) continue;
 
-    buffer = KV_PairPrint(aLists[i], NULL, 1024, " = ");
+    buffer = KV_Print(aLists[i], NULL, 1024, " = ");
     printf("%s", buffer);
     KV_free(buffer);
   }
 
 
   KV_free(aLists);
-  KV_ListDestroy(list);
+  KV_PairDestroy(list);
 
   return 0;
 };

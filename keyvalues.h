@@ -133,8 +133,7 @@ typedef enum _KV_DataType {
 
 
 typedef struct _KV_Context KV_Context; /* Parser context for reading VDF contents */
-typedef struct _KV_List KV_List; /* An array of key-value pairs */
-typedef struct _KV_Pair KV_Pair; /* A string/list value under some key */
+typedef struct _KV_Pair KV_Pair; /* Value of a specific type under a key */
 
 
 /*********************************************************************************************************************************
@@ -210,195 +209,201 @@ void KV_ContextCopyFlags(KV_Context *ctx, KV_Context *other);
 
 
 /*********************************************************************************************************************************
- * Lists of key-value pairs
- *********************************************************************************************************************************/
-
-
-/* Creates a new key-value list by dynamically allocating memory for it and resets it to the default state.
- * The returned pointer list must be manually freed using KV_ListDestroy() when not needed anymore.
- */
-KV_List *KV_NewList(void);
-
-
-/* Frees all memory used by a previously created key-value list, recursively for all list values.
- */
-void KV_ListDestroy(KV_List *list);
-
-
-/* Creates a full copy of an existing key-value list by recursively allocating memory for each of its elements.
- * The returned list must be manually freed using KV_ListDestroy() when not needed anymore.
- */
-KV_List *KV_ListCopy(KV_List *list);
-
-
-/* Frees memory of all list pairs without destroying the list itself and resets the list to an empty state.
- */
-void KV_ListClear(KV_List *list);
-
-
-/* Prints a formatted list of key-value pairs into a null-terminated character buffer.
- * The returned character buffer must be manually freed when not needed anymore.
- * Returns NULL on error; call KV_GetError() for more information.
- *
- * length - An optional pointer to that will be filled with the returned buffer length afterwards.
- * expansionstep - Amount of bytes to add to the string each time it is expanded and reallocated.
- * indentation -  A string to use for indenting pairs of each nested list value, e.g. one tab character.
- */
-char *KV_ListPrint(KV_List *list, size_t *length, size_t expansionstep, const char *indentation);
-
-
-/*********************************************************************************************************************************
  * One pair of key & value
  *********************************************************************************************************************************/
 
 
-/* Creates a new key-value pair by dynamically allocating memory for it and resets it to the default state.
+/* Creates a new key-value pair with an empty list of subpairs.
  * The returned pair must be manually freed using KV_PairDestroy() when not needed anymore.
+ *
+ * key - Name of this pair or NULL for the root pair.
  */
-KV_Pair *KV_NewPair(void);
+KV_Pair *KV_NewList(const char *key);
 
 
-/* Creates a new key-value pair with a key name and a string value.
- * It is functionally identical to calling KV_PairNew() and then KV_PairSetString().
- * 'key' and 'value' should *not* be freed after this!
+/* Creates a new key-value pair with a string value.
+ * The returned pair must be manually freed using KV_PairDestroy() when not needed anymore.
+ *
+ * key - Name of this pair or NULL for the root pair.
+ * value - Null-terminated string in an ANSI encoding.
  */
-KV_Pair *KV_NewPairString(const char *key, const char *value);
+KV_Pair *KV_NewString(const char *key, const char *value);
 
 
-/* Creates a new key-value pair with a key name and a list value.
- * It is functionally identical to calling KV_PairNew() and then KV_PairSetList().
- * KV_ListDestroy() should *not* be called on 'list' after this!
+/* Creates a new key-value pair with a list of subpairs from another pair.
+ * The entire list of subpairs is copied from 'other' and assigned to the new pair.
+ * The returned pair must be manually freed using KV_PairDestroy() when not needed anymore.
+ *
+ * key - Name of this pair or NULL for the root pair.
+ * list - Another pair to copy the list of subpairs from.
  */
-KV_Pair *KV_NewPairList(const char *key, KV_List *list);
+KV_Pair *KV_NewListFrom(const char *key, KV_Pair *list);
 
 
-/* Frees all memory used by a previously created key-value pair, recursively for all list values.
+/* Frees all memory used by a pair, including itself and the potential subpairs recursively.
  */
 void KV_PairDestroy(KV_Pair *pair);
 
 
-/* Creates a full copy of an existing key-value pair by recursively allocating memory for its value.
+/* Creates a full copy of an existing key-value pair, including its potential subpairs.
  * The returned pair must be manually freed using KV_PairDestroy() when not needed anymore.
  */
 KV_Pair *KV_PairCopy(KV_Pair *pair);
 
 
-/* Frees memory of the pair without destroying the list itself and resets the pair to an empty state.
+/* Frees memory used by the pair without destroying it.
+ * Resets the pair to an empty list of subpairs under a NULL key.
  */
 void KV_PairClear(KV_Pair *pair);
 
 
-/* Sets a new key-value pair by taking ownership of the key and value strings.
+/* Sets a new key name and a string value.
  * If the pair was already set up, the previous data is automatically cleared.
+ *
+ * key - Null-terminated string in an ANSI encoding.
+ * value - Null-terminated string in an ANSI encoding.
  */
-void KV_PairSetString(KV_Pair *pair, const char *key, const char *value);
+void KV_SetString(KV_Pair *pair, const char *key, const char *value);
 
 
-/* Sets a new key-value pair by taking ownership of the key string and the list value.
+/* Sets a new key name and a list of subpairs from another pair.
+ * The entire list of subpairs is copied from 'other' and assigned to 'pair'.
  * If the pair was already set up, the previous data is automatically cleared.
- * KV_ListDestroy() should *not* be called on 'list' after this!
+ *
+ * pair - Pair to assign a list of subpairs to.
+ * key - Null-terminated string in an ANSI encoding.
+ * list - Another pair to copy the list of subpairs from.
  */
-void KV_PairSetList(KV_Pair *pair, const char *key, KV_List *list);
+void KV_SetListFrom(KV_Pair *pair, const char *key, KV_Pair *list);
 
 
-/* Replace contents of one pair with the contents from another pair by making a full copy of them.
- * If the first pair is inside a list, the replacement will also be reflected in that list.
+/* Copies the entire list of subpairs from 'other' and appends all of them at the end of 'list'.
+ * If the pair was already set up with a non-list value, the previous data is cleared and replaced with an empty list.
+ */
+void KV_CopyNodes(KV_Pair *list, KV_Pair *other);
+
+
+/* Replaces contents of 'pair' with the copied contents from 'other'.
+ * If it's a subpair of another pair, the replacement is also reflected in the parent.
  * The contents of the other pair remain unchanged.
  */
-void KV_PairReplace(KV_Pair *pair, KV_Pair *other);
+void KV_Replace(KV_Pair *pair, KV_Pair *other);
 
 
-/* Swap values between two different pairs, even if either one of them is empty.
- * If either pair is inside a list, the swap will also be reflected in that list.
+/* Swaps key names & values between two different pairs, even if either one of them is empty.
+ * If either one is a subpair of another pair, the swap is also reflected in the parent.
  */
-void KV_PairSwap(KV_Pair *pair1, KV_Pair *pair2);
+void KV_Swap(KV_Pair *pair1, KV_Pair *pair2);
 
 
-/* Prints a formatted key-value pair into a null-terminated character buffer.
+/* Prints a formatted pair into a null-terminated character buffer.
  * The returned character buffer must be manually freed when not needed anymore.
  * Returns NULL on error; call KV_GetError() for more information.
  *
+ * pair - A pair to print out. If its key is NULL (a root pair), the value is printed as is.
  * length - An optional pointer to that will be filled with the returned buffer length afterwards.
  * expansionstep - Amount of bytes to add to the string each time it is expanded and reallocated.
- * indentation - A string to use for indenting pairs of each nested list value, e.g. one tab character.
+ * indentation - A string to use for indenting each nested subpair, e.g. one tab character.
  */
-char *KV_PairPrint(KV_Pair *pair, size_t *length, size_t expansionstep, const char *indentation);
+char *KV_Print(KV_Pair *pair, size_t *length, size_t expansionstep, const char *indentation);
 
 
 /*********************************************************************************************************************************
  * Doubly linked lists
- * NOTE: These functions *do not* perform any safety checks and may lead to undefined behavior if not used properly!
  *********************************************************************************************************************************/
 
 
-/* Checks whether a list has no pairs in it. */
-KV_bool KV_IsListEmpty(KV_List *list);
-
-
-/* Returns amount of pairs in a list. */
-size_t KV_ListCount(KV_List *list);
-
-
-/* Returns an n-th pair from the chain in a list, otherwise NULL.
- * Can be used for iterating through the entire chain until it returns the first NULL.
+/* Checks whether a list has any subpairs.
+ * If the pair value isn't a list, always returns KV_false.
  */
-KV_Pair *KV_GetPair(KV_List *list, size_t n);
+KV_bool KV_HasNodes(KV_Pair *list);
 
 
-/* Returns the first pair under the specified key from a list, otherwise NULL. */
-KV_Pair *KV_FindPair(KV_List *list, const char *key);
-
-
-/* Returns the first pair of a specific type under the specified key from a list, otherwise NULL. */
-KV_Pair *KV_FindPairOfType(KV_List *list, const char *key, KV_DataType type);
-
-
-/* Returns a string from the first pair under the specified key from a list, otherwise NULL. */
-char *KV_FindString(KV_List *list, const char *key);
-
-
-/* Returns a list from the first pair under the specified key from a list, otherwise NULL. */
-KV_List *KV_FindList(KV_List *list, const char *key);
-
-
-/* Returns the first subpair from a list. */
-KV_Pair *KV_GetHead(KV_List *list);
-
-
-/* Returns the last subpair from a list. */
-KV_Pair *KV_GetTail(KV_List *list);
-
-
-/* Adds a new pair to the beginning of the list by taking ownership of the provided pointer.
- * KV_PairDestroy() should *not* be called on 'pair' after this!
+/* Returns amount of subpairs in a list.
+ * If the pair value isn't a list, always returns -1.
  */
-void KV_ListAddHead(KV_List *list, KV_Pair *pair);
+size_t KV_GetNodeCount(KV_Pair *list);
 
 
-/* Adds a new pair to the end of the list by taking ownership of the provided pointer.
- * KV_PairDestroy() should *not* be called on 'pair' after this!
+/* Returns n-th subpair from a list (if n >= 0) or NULL (if n >= KV_GetNodeCount()).
+ * If the pair value isn't a list, always returns NULL.
  */
-void KV_ListAddTail(KV_List *list, KV_Pair *pair);
+KV_Pair *KV_GetPair(KV_Pair *list, size_t n);
 
 
-/* Insert this pair before another pair, which may be in the middle of an existing chain. */
-void KV_PairInsertBefore(KV_Pair *pair, KV_Pair *other);
+/* Returns the first subpair under the specified key, otherwise NULL.
+ * If the pair value isn't a list, always returns NULL.
+ */
+KV_Pair *KV_FindPair(KV_Pair *list, const char *key);
 
 
-/* Insert this pair after another pair, which may be in the middle of an existing chain. */
-void KV_PairInsertAfter(KV_Pair *pair, KV_Pair *other);
+/* Returns the first subpair of a specific type under the specified key, otherwise NULL.
+ * If the pair value isn't a list, always returns NULL.
+ */
+KV_Pair *KV_FindPairOfType(KV_Pair *list, const char *key, KV_DataType type);
 
 
-/* Expunge this pair from whatever chain it's currently in. */
-void KV_PairExpunge(KV_Pair *pair);
+/* Check if a pair under the specified key is empty.
+ * Returns KV_true if the pair isn't found or if the found pair has no subpairs in a list.
+ */
+KV_bool KV_IsEmpty(KV_Pair *list, const char *key);
 
 
-/* Returns the previous neighbor of a pair. */
+/* Returns a string from the first subpair under the specified key or 'defaultValue' if not found.
+ */
+const char *KV_FindString(KV_Pair *list, const char *key, const char *defaultValue);
+
+
+/* Returns the first subpair from a pair.
+ * If the pair value isn't a list, always returns NULL.
+ */
+KV_Pair *KV_GetHead(KV_Pair *list);
+
+
+/* Returns the last subpair from a pair.
+ * If the pair value isn't a list, always returns NULL.
+ */
+KV_Pair *KV_GetTail(KV_Pair *list);
+
+
+/* Prepends a new subpair at the beginning of a list.
+ * If the pair value isn't a list, it does nothing.
+ * KV_PairDestroy() should *not* be called on 'other' after this because it's not copied!
+ */
+void KV_AddHead(KV_Pair *list, KV_Pair *other);
+
+
+/* Appends a new subpair at the end of a list.
+ * If the pair value isn't a list, it does nothing.
+ * KV_PairDestroy() should *not* be called on 'other' after this because it's not copied!
+ */
+void KV_AddTail(KV_Pair *list, KV_Pair *other);
+
+
+/* Insert a node before another node, which may be in the middle of some list. */
+void KV_InsertBefore(KV_Pair *pair, KV_Pair *other);
+
+
+/* Insert a node after another node, which may be in the middle of some list. */
+void KV_InsertAfter(KV_Pair *pair, KV_Pair *other);
+
+
+/* Expunge a node from whatever list it's currently in. */
+void KV_Expunge(KV_Pair *pair);
+
+
+/* Returns the previous neighbor of a subpair. */
 KV_Pair *KV_GetPrev(KV_Pair *pair);
 
 
-/* Returns the next neighbor of a pair. */
+/* Returns the next neighbor of a subpair. */
 KV_Pair *KV_GetNext(KV_Pair *pair);
+
+
+/*********************************************************************************************************************************
+ * Pair values
+ * NOTE: These functions *do not* perform any safety checks and may lead to undefined behavior if not used properly!
+ *********************************************************************************************************************************/
 
 
 /* Returns the key name of a pair. */
@@ -413,44 +418,40 @@ KV_DataType KV_GetDataType(KV_Pair *pair);
 char *KV_GetString(KV_Pair *pair);
 
 
-/* Returns the list value of a pair. */
-KV_List *KV_GetList(KV_Pair *pair);
-
-
 /*********************************************************************************************************************************
  * Serialization
  *********************************************************************************************************************************/
 
 
-/* Constructs a list of key-values by parsing within certain context.
+/* Constructs a list of subpairs by parsing within certain context.
  * Returns NULL on error; call KV_GetError() for more information.
  */
-KV_List *KV_Parse(KV_Context *ctx);
+KV_Pair *KV_Parse(KV_Context *ctx);
 
 
-/* Constructs a list of key-values by directly parsing a character array in the current working directory.
+/* Constructs a list of subpairs by directly parsing a character array in the current working directory.
  * Returns NULL on error; call KV_GetError() for more information.
  *
  * buffer - Character buffer to read from. May or may not be null-terminated.
  * length - Maximum length of the specified character buffer. If set to -1, reads the buffer until a null character.
  */
-KV_List *KV_ParseBuffer(const char *buffer, size_t length);
+KV_Pair *KV_ParseBuffer(const char *buffer, size_t length);
 
 
-/* Constructs a list of key-values by directly parsing a file in the current working directory.
+/* Constructs a list of subpairs by directly parsing a file in the current working directory.
  * Returns NULL on error; call KV_GetError() for more information.
  *
  * path - Absolute or relative path to a physical file on disk.
  */
-KV_List *KV_ParseFile(const char *path);
+KV_Pair *KV_ParseFile(const char *path);
 
 
-/* Save contents of an existing list into a file.
+/* Save contents of a pair into a file.
  * Returns KV_false on error; call KV_GetError() for more information.
  *
  * path - Absolute or relative path to a physical file on disk.
  */
-KV_bool KV_Save(KV_List *list, const char *path);
+KV_bool KV_Save(KV_Pair *pair, const char *path);
 
 
 #ifdef __cplusplus

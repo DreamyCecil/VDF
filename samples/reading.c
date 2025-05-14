@@ -53,7 +53,7 @@ static const char *_vdf = " \
   \"Hello\"  \"World\"      \
                             \
   peep_this_list  {         \
-    \"wow\"!!!                \
+    \"wow\"!!!              \
   }                         \
                             \
   invisible  pair           \
@@ -62,7 +62,7 @@ static const char *_vdf = " \
 
 int main(int argc, char *argv[])
 {
-  KV_List *list;
+  KV_Pair *list;
   char *buffer;
 
 
@@ -77,12 +77,12 @@ int main(int argc, char *argv[])
   }
 
   // Print out the list
-  buffer = KV_ListPrint(list, NULL, 1024, "\t");
+  buffer = KV_Print(list, NULL, 1024, "\t");
   printf("%s", buffer);
   KV_free(buffer);
 
   // Destroy created list
-  KV_ListDestroy(list);
+  KV_PairDestroy(list);
 
 
   // Parse the first 150 characters from a character buffer
@@ -96,12 +96,12 @@ int main(int argc, char *argv[])
   }
 
   // Print out the list
-  buffer = KV_ListPrint(list, NULL, 1024, "\t");
+  buffer = KV_Print(list, NULL, 1024, "\t");
   printf("%s", buffer);
   KV_free(buffer);
 
   // Destroy created list
-  KV_ListDestroy(list);
+  KV_PairDestroy(list);
 
   return 0;
 };

@@ -49,27 +49,27 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char *argv[])
 {
-  // Create a list
-  KV_List *list = KV_NewList();
+  // Create a root pair
+  KV_Pair *list = KV_NewList(NULL);
 
-  KV_Pair *pair;
+  KV_Pair *sub;
 
-  // Add one pair
-  pair = KV_NewPairString("Key1", "Hello, World!");
-  KV_ListAddTail(list, pair);
+  // Add one subpair
+  sub = KV_NewString("Key1", "Hello, World!");
+  KV_AddTail(list, sub);
 
   // Add an empty list
-  pair = KV_NewPairList("List", KV_NewList());
-  KV_ListAddTail(list, pair);
+  sub = KV_NewList("List");
+  KV_AddTail(list, sub);
 
   // Add a pair to that empty list
-  KV_ListAddTail(KV_GetList(pair), KV_NewPairString("Key2", "123.456"));
+  KV_AddTail(sub, KV_NewString("Key2", "123.456"));
 
   // Save list into a file
   KV_Save(list, "out.txt");
 
   // Destroy created list
-  KV_ListDestroy(list);
+  KV_PairDestroy(list);
 
   return 0;
 };

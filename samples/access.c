@@ -49,51 +49,43 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char *argv[])
 {
-  KV_List *listFile = KV_ParseFile("sample.vdf");
+  KV_Pair *list = KV_ParseFile("sample.vdf");
 
-  if (!listFile) {
+  if (!list) {
     fprintf(stderr, "%s\n", KV_GetError());
     return 1;
   }
 
-  KV_Pair *pair;
-  KV_List *list;
+  KV_Pair *sub;
 
 
-  // Add the list to itself (copies all pairs up until this point)
-  pair = KV_NewPairList("this", KV_ListCopy(listFile));
-
-  KV_ListAddHead(listFile, pair);
-
-
-  // Add a pair to a list inside the last list (must exist)
-  list = KV_GetList(pair);
-  list = KV_FindList(list, "dummy");
-
-  KV_ListAddTail(list, KV_NewPairString("hello", "hi!"));
+  // Add the list to itself (copies all subpairs up until this point)
+  sub = KV_NewListFrom("this", list);
+  KV_AddHead(list, sub);
 
 
-  // Check if there's a pair under the "Test" key
-  pair = KV_FindPair(listFile, "Test");
-
-  printf("'Test' pair %s\n", pair ? "exists" : "doesn't exist");
-
-
-  // Check if some list is empty (must exist)
-  list = KV_FindList(listFile, "dummy");
-
-  printf("'dummy' list is %s\n", KV_IsListEmpty(list) ? "empty" : "not empty");
+  // Add a subpair to a list inside the last list (must exist)
+  sub = KV_FindPairOfType(sub, "dummy", KV_TYPE_NONE);
+  KV_AddTail(sub, KV_NewString("hello", "hi!"));
 
 
-  // Retrieve a value from "this/dummy/hello"
-  list = listFile;
-  list = KV_FindList(list, "this");
-  list = KV_FindList(list, "dummy");
-  pair = KV_FindPair(list, "hello");
-
-  printf("'this/dummy/hello' = %s\n", (KV_GetDataType(pair) == KV_TYPE_NONE) ? "{list}" : KV_GetString(pair));
+  // Check if there's a subpair under the "Test" key
+  printf("'Test' pair %s\n", KV_FindPair(list, "Test") ? "exists" : "doesn't exist");
 
 
-  KV_ListDestroy(listFile);
+  // Check if some subpair is empty
+  printf("'dummy' is %s\n", KV_IsEmpty(list, "dummy") ? "empty" : "not empty");
+
+
+  // Retrieve a string value from "this/dummy/hello"
+  const char *str;
+  sub = KV_FindPairOfType(list, "this", KV_TYPE_NONE);
+  sub = KV_FindPairOfType(sub, "dummy", KV_TYPE_NONE);
+  str = KV_FindString(sub, "hello", "(not a string)");
+
+  printf("'this/dummy/hello' = %s\n", str);
+
+
+  KV_PairDestroy(list);
   return 0;
 };
