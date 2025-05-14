@@ -257,24 +257,28 @@ KV_Pair *KV_PairCopy(KV_Pair *pair);
 void KV_PairClear(KV_Pair *pair);
 
 
-/* Sets a new key name and a string value.
+/* Sets a new key name to a pair.
+ * The key may be NULL, which turns the pair into a "root" one.
+ */
+void KV_SetKey(KV_Pair *pair, const char *key);
+
+
+/* Sets a new string value.
  * If the pair was already set up, the previous data is automatically cleared.
  *
- * key - Null-terminated string in an ANSI encoding.
  * value - Null-terminated string in an ANSI encoding.
  */
-void KV_SetString(KV_Pair *pair, const char *key, const char *value);
+void KV_SetString(KV_Pair *pair, const char *value);
 
 
-/* Sets a new key name and a list of subpairs from another pair.
+/* Sets a new list of subpairs from another pair.
  * The entire list of subpairs is copied from 'other' and assigned to 'pair'.
  * If the pair was already set up, the previous data is automatically cleared.
  *
  * pair - Pair to assign a list of subpairs to.
- * key - Null-terminated string in an ANSI encoding.
  * list - Another pair to copy the list of subpairs from.
  */
-void KV_SetListFrom(KV_Pair *pair, const char *key, KV_Pair *list);
+void KV_SetListFrom(KV_Pair *pair, KV_Pair *list);
 
 
 /* Copies the entire list of subpairs from 'other' and appends all of them at the end of 'list'.
@@ -283,7 +287,7 @@ void KV_SetListFrom(KV_Pair *pair, const char *key, KV_Pair *list);
 void KV_CopyNodes(KV_Pair *list, KV_Pair *other);
 
 
-/* Replaces contents of 'pair' with the copied contents from 'other'.
+/* Replaces value of 'pair' with the copied value from 'other'.
  * If it's a subpair of another pair, the replacement is also reflected in the parent.
  * The contents of the other pair remain unchanged.
  */

@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
   for (; iter; iter = KV_GetNext(iter))
   {
-    KV_SetString(iter, KV_GetKey(iter), "asdf");
+    KV_SetString(iter, "asdf");
   }
 
 

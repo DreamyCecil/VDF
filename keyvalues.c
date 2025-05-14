@@ -301,15 +301,15 @@ KV_Pair *KV_NewListFrom(const char *key, KV_Pair *list) {
   return pair;
 };
 
-/* Free all memory associated with the pair without resetting any fields */
-KV_INLINE void KV_PairFreeMemory(KV_Pair *pair) {
+/* Free memory of the pair key without resetting the field */
+KV_INLINE void KV_FreeKey(KV_Pair *pair) {
+  if (pair->_key) KV_free(pair->_key);
+};
+
+/* Free all memory associated with the pair value without resetting any fields */
+KV_INLINE void KV_FreeValue(KV_Pair *pair) {
   KV_Pair *pairDestroy;
   KV_Pair *pairIter;
-
-  /* Destroy key */
-  if (pair->_key) {
-    KV_free(pair->_key);
-  }
 
   /* Destroy value */
   switch (pair->_type) {
@@ -342,7 +342,8 @@ void KV_PairDestroy(KV_Pair *pair) {
   KV_Expunge(pair);
 
   /* Clear the pair and free it */
-  KV_PairFreeMemory(pair);
+  KV_FreeKey(pair);
+  KV_FreeValue(pair);
   KV_free(pair);
 };
 
@@ -381,7 +382,8 @@ void KV_PairClear(KV_Pair *pair) {
   assert(pair);
 
   /* Free all memory */
-  KV_PairFreeMemory(pair);
+  KV_FreeKey(pair);
+  KV_FreeValue(pair);
 
   /* Reset the pair state but preserve the neighboring connections */
   pair->_key = NULL;
@@ -389,36 +391,46 @@ void KV_PairClear(KV_Pair *pair) {
   pair->_value.head = pair->_value.tail = NULL;
 };
 
-void KV_SetString(KV_Pair *pair, const char *key, const char *value) {
+void KV_SetKey(KV_Pair *pair, const char *key) {
   char *keyCopy;
+
+  assert(pair);
+
+  /* Root pair */
+  if (!key) {
+    KV_FreeKey(pair);
+    pair->_key = NULL;
+    return;
+  }
+
+  /* Copy the string beforehand in case it is the same */
+  keyCopy = KV_strdup(key);
+
+  KV_FreeKey(pair);
+  pair->_key = keyCopy;
+};
+
+void KV_SetString(KV_Pair *pair, const char *value) {
   char *valueCopy;
 
-  assert(pair && key && value);
+  assert(pair && value);
 
-  /* Copy the strings beforehand in case they are the same, otherwise the data is wiped before KV_strdup() */
-  keyCopy = KV_strdup(key);
+  /* Copy the string beforehand in case it is the same, otherwise the data is wiped before KV_strdup() */
   valueCopy = KV_strdup(value);
 
   /* Clear last pair before setting a new one */
-  KV_PairFreeMemory(pair);
+  KV_FreeValue(pair);
 
-  pair->_key = keyCopy;
   pair->_type = KV_TYPE_STRING;
   pair->_value.str = valueCopy;
 };
 
-void KV_SetListFrom(KV_Pair *pair, const char *key, KV_Pair *list) {
-  char *keyCopy;
-
-  assert(pair && key && list);
-
-  /* Copy the string beforehand in case it is the same, otherwise the data is wiped before KV_strdup() */
-  keyCopy = KV_strdup(key);
+void KV_SetListFrom(KV_Pair *pair, KV_Pair *list) {
+  assert(pair && list);
 
   /* Clear last pair before setting a new one */
-  KV_PairFreeMemory(pair);
+  KV_FreeValue(pair);
 
-  pair->_key = keyCopy;
   pair->_type = KV_TYPE_NONE;
   pair->_value.head = pair->_value.tail = NULL;
   KV_CopyNodes(pair, list);
@@ -430,7 +442,7 @@ void KV_CopyNodes(KV_Pair *list, KV_Pair *other) {
 
   /* Set an entirely new list if the current value isn't a list */
   if (list->_type != KV_TYPE_NONE) {
-    KV_SetListFrom(list, list->_key, other);
+    KV_SetListFrom(list, other);
     return;
   }
 
@@ -445,10 +457,9 @@ void KV_Replace(KV_Pair *pair, KV_Pair *other) {
   assert(pair && other);
   if (pair == other) return;
 
-  /* Clear last pair before setting a new one */
-  KV_PairFreeMemory(pair);
+  /* Clear last value before setting a new one */
+  KV_FreeValue(pair);
 
-  pair->_key = KV_strdup(other->_key);
   pair->_type = other->_type;
 
   switch (pair->_type) {
@@ -1094,7 +1105,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
       /* Catch duplicate keys */
       if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
         if (ctx->_overwrite) {
-          KV_SetListFrom(pairFind, strKey, listTemp);
+          KV_SetListFrom(pairFind, listTemp);
           KV_PairDestroy(listTemp);
 
           KV_free(strKey);
@@ -1192,7 +1203,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
     /* Catch duplicate keys */
     if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
       if (ctx->_overwrite) {
-        KV_SetString(pairFind, strKey, strTemp);
+        KV_SetString(pairFind, strTemp);
 
         KV_free(strKey);
         KV_free(strTemp);
