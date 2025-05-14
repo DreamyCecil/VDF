@@ -996,14 +996,22 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
 
   for (;;) {
     /* Quit the loop on specific characters */
-    if (onlyquotes) {
-      if (*ctx->_pch == '"') break;
-    } else {
-      if (*ctx->_pch == '"' || *ctx->_pch == '/' || *ctx->_pch == '{' || *ctx->_pch == '}' || isspace(*ctx->_pch)) break;
+    if (!onlyquotes) {
+      if (*ctx->_pch == '"' || *ctx->_pch == '/' || *ctx->_pch == '{' || *ctx->_pch == '}' || isspace(*ctx->_pch)) {
+        break;
+      }
+
+    /* Skip closing quotes */
+    } else if (*ctx->_pch == '"') {
+      ++ctx->_pch;
+      break;
     }
 
     /* Unexpected end of the string */
     if (KV_ContextBufferEnded(ctx) || *ctx->_pch == '\n') {
+      /* Fine with unquoted strings */
+      if (!onlyquotes) break;
+
       KV_SetError(ctx, "Unclosed string");
       KV_free(str);
       return NULL;
@@ -1019,10 +1027,10 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
     if (ctx->_escapeseq && *ctx->_pch == '\\') {
       ++ctx->_pch;
 
+      /* Insert a single backslash, if at the very end */
       if (KV_ContextBufferEnded(ctx)) {
-        KV_SetError(ctx, "Unclosed string");
-        KV_free(str);
-        return NULL;
+        str[iChar++] = '\\';
+        break;
       }
 
       /* Append special character */
@@ -1044,9 +1052,6 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
 
     ++ctx->_pch;
   }
-
-  /* Skip closing quotes */
-  ++ctx->_pch;
 
   /* Terminate the string */
   str[iChar] = '\0';
