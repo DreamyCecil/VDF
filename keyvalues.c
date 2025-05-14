@@ -204,7 +204,7 @@ void KV_ContextSetupFile(KV_Context *ctx, const char *directory, const char *pat
   ctx->_pch = NULL;
   ctx->_line = 0;
 
-  KV_ContextSetFlags(ctx, KV_true, KV_false, KV_true);
+  KV_ContextSetFlags(ctx, KV_true, KV_true, KV_true);
 };
 
 void KV_ContextSetFlags(KV_Context *ctx, KV_bool escapeseq, KV_bool multikey, KV_bool overwrite) {

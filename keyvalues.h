@@ -146,7 +146,7 @@ struct _KV_Context {
 
   /* Flags */
   KV_bool _escapeseq : 1; /* (default: KV_true) Parse escape sequences in strings */
-  KV_bool _multikey  : 1; /* (default: KV_false) Allow adding multiple values under the same key */
+  KV_bool _multikey  : 1; /* (default: KV_true) Allow adding multiple values under the same key */
   KV_bool _overwrite : 1; /* (default: KV_true) Overwrite values of duplicate keys, if '_multikey' is disabled */
 
   /* Temporary parser data */
