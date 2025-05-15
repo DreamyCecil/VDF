@@ -498,9 +498,14 @@ void KV_Replace(KV_Pair *pair, KV_Pair *other) {
   }
 };
 
-void KV_Swap(KV_Pair *pair1, KV_Pair *pair2) {
-  KV_Pair temp;
+/* Swap all struct data between two different pairs */
+KV_INLINE void KV_SwapWholePairs(KV_Pair *pair1, KV_Pair *pair2) {
+  KV_Pair temp = *pair1;
+  *pair1 = *pair2;
+  *pair2 = temp;
+};
 
+void KV_Swap(KV_Pair *pair1, KV_Pair *pair2) {
   KV_Pair *parent1, *parent2;
   KV_Pair *prev1, *prev2;
   KV_Pair *next1, *next2;
@@ -518,9 +523,7 @@ void KV_Swap(KV_Pair *pair1, KV_Pair *pair2) {
   next2 = pair2->_next;
 
   /* Swap the values */
-  temp = *pair1;
-  *pair1 = *pair2;
-  *pair2 = temp;
+  KV_SwapWholePairs(pair1, pair2);
 
   /* Restore the neighbors */
   pair1->_parent = parent1;
@@ -1154,8 +1157,8 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
       return KV_false;
     }
 
-    /* Append a copy of a pair */
-    KV_AddTail(list, KV_PairCopy(pairIter));
+    /* Move a pair over to the current list instead of copying it */
+    KV_AddTail(list, pairIter);
   }
 
   KV_PairDestroy(listTemp);
@@ -1173,8 +1176,11 @@ KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *
   if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
     /* Overwrite values under the same key */
     if (ctx->_overwrite) {
-      KV_SetListFrom(pairFind, listTemp);
+      /* Swap the found pair with this temporary list */
+      KV_SetKey(listTemp, strKey);
+      KV_Swap(pairFind, listTemp);
 
+      /* Temporary list now contains the found pair data, which isn't needed anymore */
       KV_PairDestroy(listTemp);
       return KV_true;
     }
@@ -1186,10 +1192,10 @@ KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *
     return KV_false;
   }
 
-  /* Add a new (or a duplicate) list */
-  KV_AddTail(list, KV_NewListFrom(strKey, listTemp));
+  /* Append a new (or a duplicate) list */
+  KV_SetKey(listTemp, strKey);
+  KV_AddTail(list, listTemp);
 
-  KV_PairDestroy(listTemp);
   return KV_true;
 };
 
@@ -1209,7 +1215,7 @@ KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *s
     return KV_false;
   }
 
-  /* Add a new (or a duplicate) pair */
+  /* Append a new (or a duplicate) pair */
   KV_AddTail(list, KV_NewString(strKey, strValue));
   return KV_true;
 };

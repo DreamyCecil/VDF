@@ -371,11 +371,11 @@ void KV_AddHead(KV_Pair *list, KV_Pair *other);
 void KV_AddTail(KV_Pair *list, KV_Pair *other);
 
 
-/* Insert a node before another node, which may be in the middle of some list. */
+/* Insert 'pair' node before 'other' node, which may be in the middle of some list. */
 void KV_InsertBefore(KV_Pair *pair, KV_Pair *other);
 
 
-/* Insert a node after another node, which may be in the middle of some list. */
+/* Insert 'pair' node after 'other' node, which may be in the middle of some list. */
 void KV_InsertAfter(KV_Pair *pair, KV_Pair *other);
 
 
