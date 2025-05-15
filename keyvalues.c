@@ -303,7 +303,7 @@ KV_Pair *KV_NewListFrom(const char *key, KV_Pair *list) {
   pair->_key = (key ? KV_strdup(key) : NULL);
   pair->_type = KV_TYPE_NONE;
   pair->_value.head = pair->_value.tail = NULL;
-  KV_CopyNodes(pair, list);
+  KV_CopyNodes(pair, list, KV_false);
 
   pair->_parent = NULL;
   pair->_prev = pair->_next = NULL;
@@ -368,7 +368,7 @@ KV_Pair *KV_PairCopy(KV_Pair *other) {
   switch (pair->_type) {
     case KV_TYPE_NONE:
       pair->_value.head = pair->_value.tail = NULL;
-      KV_CopyNodes(pair, other);
+      KV_CopyNodes(pair, other, KV_false);
       break;
 
     case KV_TYPE_STRING:
@@ -443,22 +443,30 @@ void KV_SetListFrom(KV_Pair *pair, KV_Pair *list) {
 
   pair->_type = KV_TYPE_NONE;
   pair->_value.head = pair->_value.tail = NULL;
-  KV_CopyNodes(pair, list);
+  KV_CopyNodes(pair, list, KV_false);
 };
 
-void KV_CopyNodes(KV_Pair *list, KV_Pair *other) {
-  KV_Pair *pairIter;
+void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite) {
+  KV_Pair *pairIter, *pairFind;
   assert(list && other);
 
   /* Set an entirely new list if the current value isn't a list */
   if (list->_type != KV_TYPE_NONE) {
-    KV_SetListFrom(list, other);
-    return;
+    KV_FreeValue(list);
+
+    list->_type = KV_TYPE_NONE;
+    list->_value.head = list->_value.tail = NULL;
   }
 
   /* Add copies of all subpairs to this pair */
   for (pairIter = other->_value.head; pairIter; pairIter = pairIter->_next)
   {
+    /* Replace duplicate keys */
+    if (overwrite && (pairFind = KV_FindPair(list, pairIter->_key))) {
+      KV_Replace(pairFind, pairIter);
+      continue;
+    }
+
     KV_AddTail(list, KV_PairCopy(pairIter));
   }
 };
@@ -475,7 +483,7 @@ void KV_Replace(KV_Pair *pair, KV_Pair *other) {
   switch (pair->_type) {
     case KV_TYPE_NONE:
       pair->_value.head = pair->_value.tail = NULL;
-      KV_CopyNodes(pair, other);
+      KV_CopyNodes(pair, other, KV_false);
       break;
 
     case KV_TYPE_STRING:

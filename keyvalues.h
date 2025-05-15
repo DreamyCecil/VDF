@@ -258,7 +258,7 @@ void KV_SetString(KV_Pair *pair, const char *value);
  * The entire list of subpairs is copied from 'other' and assigned to 'pair'.
  * If the pair was already set up, the previous data is automatically cleared.
  *
- * pair - Pair to assign a list of subpairs to.
+ * pair - Pair to assign the list of subpairs to.
  * list - Another pair to copy the list of subpairs from.
  */
 void KV_SetListFrom(KV_Pair *pair, KV_Pair *list);
@@ -266,8 +266,12 @@ void KV_SetListFrom(KV_Pair *pair, KV_Pair *list);
 
 /* Copies the entire list of subpairs from 'other' and appends all of them at the end of 'list'.
  * If the pair was already set up with a non-list value, the previous data is cleared and replaced with an empty list.
+ *
+ * list - Pair to copy the list of subpairs into.
+ * other - Pair to copy the list of subpairs from.
+ * overwrite - Whether to overwrite existing values in 'list' with the new ones from 'other' under the same keys.
  */
-void KV_CopyNodes(KV_Pair *list, KV_Pair *other);
+void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite);
 
 
 /* Replaces value of 'pair' with the copied value from 'other'.
