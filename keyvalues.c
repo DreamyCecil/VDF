@@ -943,7 +943,7 @@ KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx) {
   /* Disregard the directory if it's an empty string or the file path is absolute */
   if (!*ctx->_directory || IsPathStringAbsolute(ctx->_file)) {
     file = fopen(ctx->_file, "rb");
-    
+
   /* Otherwise compose a full path to the file */
   } else {
     str = (char *)KV_malloc(strlen(ctx->_directory) + strlen(ctx->_file) + 1);
@@ -1114,17 +1114,106 @@ KV_INLINE KV_bool KV_ParseComments(KV_Context *ctx)
   return KV_true;
 };
 
+KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const char *strFile) {
+  KV_Context ctxInclude;
+  KV_Pair *listTemp, *pairIter, *pairFind;
+
+  /* Get the list from a file */
+  KV_ContextSetupFile(&ctxInclude, ctx->_directory, strFile);
+  KV_ContextCopyFlags(&ctxInclude, ctx);
+
+  listTemp = KV_ParseFileInternal(&ctxInclude);
+
+  /* Couldn't parse an included list */
+  if (!listTemp) return KV_false;
+
+  /* Append all pairs to the current list */
+  for (pairIter = listTemp->_value.head; pairIter; pairIter = pairIter->_next) {
+    /* Catch duplicate keys */
+    if (!ctx->_multikey && (pairFind = KV_FindPair(list, pairIter->_key))) {
+      /* Overwrite values under the same key */
+      if (ctx->_overwrite) {
+        KV_Swap(pairFind, pairIter);
+        continue;
+      }
+
+      /* Or throw an error */
+      KV_SetError(ctx, "Key already exists");
+
+      KV_PairDestroy(listTemp);
+      return KV_false;
+    }
+
+    /* Append a copy of a pair */
+    KV_AddTail(list, KV_PairCopy(pairIter));
+  }
+
+  KV_PairDestroy(listTemp);
+  return KV_true;
+};
+
+KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *strKey) {
+  KV_Pair *pairFind;
+  KV_Pair *listTemp = KV_ParseBufferInternal(ctx, KV_true);
+
+  /* Couldn't parse an inner list */
+  if (!listTemp) return KV_false;
+
+  /* Catch duplicate keys */
+  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
+    /* Overwrite values under the same key */
+    if (ctx->_overwrite) {
+      KV_SetListFrom(pairFind, listTemp);
+
+      KV_PairDestroy(listTemp);
+      return KV_true;
+    }
+
+    /* Or throw an error */
+    KV_SetError(ctx, "Key already exists");
+
+    KV_PairDestroy(listTemp);
+    return KV_false;
+  }
+
+  /* Add a new (or a duplicate) list */
+  KV_AddTail(list, KV_NewListFrom(strKey, listTemp));
+
+  KV_PairDestroy(listTemp);
+  return KV_true;
+};
+
+KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *strKey, const char *strValue) {
+  KV_Pair *pairFind;
+
+  /* Catch duplicate keys */
+  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
+    /* Overwrite values under the same key */
+    if (ctx->_overwrite) {
+      KV_SetString(pairFind, strValue);
+      return KV_true;
+    }
+
+    /* Or throw an error */
+    KV_SetError(ctx, "Key already exists");
+    return KV_false;
+  }
+
+  /* Add a new (or a duplicate) pair */
+  KV_AddTail(list, KV_NewString(strKey, strValue));
+  return KV_true;
+};
+
 KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   KV_Pair *list;
   const char *pchCheck;
-  char *strTemp;
 
+  char *strTemp;
   char *strKey;
-  KV_Pair *listTemp, *pairIter, *pairFind;
-  KV_Context ctxInclude;
+  KV_bool bIncluded;
 
   list = KV_NewList(NULL);
-  strKey = NULL; /* Set to a string if expecting a value string for a complete pair */
+  strKey = NULL; /* Set to a valid string if expecting a value for a complete pair */
 
   while (!KV_ContextBufferEnded(ctx)) {
     /* Parse line breaks and comments */
@@ -1141,38 +1230,17 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
 
     /* Lists: Parse another list between curly braces */
     if (strKey && *pchCheck == '{') {
-      listTemp = KV_ParseBufferInternal(ctx, KV_true);
-
-      /* Couldn't parse an inner list */
-      if (!listTemp) {
-        KV_PairDestroy(list);
-        return NULL;
-      }
-
-      /* Catch duplicate keys */
-      if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
-        if (ctx->_overwrite) {
-          KV_SetListFrom(pairFind, listTemp);
-          KV_PairDestroy(listTemp);
-
-          KV_free(strKey);
-          strKey = NULL;
-          continue;
-        }
-
-        KV_SetError(ctx, "Key already exists");
+      /* Parsed an inner list under some key */
+      if (KV_ParseInnerList(ctx, list, strKey)) {
         KV_free(strKey);
-        KV_PairDestroy(listTemp);
-        KV_PairDestroy(list);
-        return NULL;
+        strKey = NULL;
+        continue;
       }
 
-      KV_AddTail(list, KV_NewListFrom(strKey, listTemp));
-      KV_PairDestroy(listTemp);
-
+      /* Or errored out */
       KV_free(strKey);
-      strKey = NULL;
-      continue;
+      KV_PairDestroy(list);
+      return NULL;
     }
 
     /* List end, if not expecting a value */
@@ -1190,6 +1258,9 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
 
     /* Couldn't parse a string token */
     if (!strTemp) {
+      /* Free remembered key string */
+      if (strKey) KV_free(strKey);
+
       KV_PairDestroy(list);
       return NULL;
     }
@@ -1202,77 +1273,34 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
 
     /* Include macros */
     if (!strncasecmp(strKey, "#base", 5) || !strncasecmp(strKey, "#include", 8)) {
-      /* Get the list from a file */
-      KV_ContextSetupFile(&ctxInclude, ctx->_directory, strTemp);
-      KV_ContextCopyFlags(&ctxInclude, ctx);
-
-      listTemp = KV_ParseFileInternal(&ctxInclude);
+      /* Added pairs from the included list */
+      bIncluded = KV_AppendIncludedPairs(ctx, list, strTemp);
 
       /* Free strings after macro execution */
       KV_free(strKey);
       KV_free(strTemp);
       strKey = NULL;
-      strTemp = NULL;
 
-      /* Couldn't parse an included list */
-      if (!listTemp) {
-        KV_PairDestroy(list);
-        return NULL;
-      }
+      if (bIncluded) continue;
 
-      /* Append all pairs to the current list */
-      for (pairIter = listTemp->_value.head; pairIter; pairIter = pairIter->_next)
-      {
-        strTemp = pairIter->_key;
-
-        /* Catch duplicate keys */
-        if (!ctx->_multikey && (pairFind = KV_FindPair(list, strTemp))) {
-          if (ctx->_overwrite) {
-            KV_Swap(pairFind, pairIter);
-            continue;
-          }
-
-          KV_SetError(ctx, "Key already exists");
-          KV_PairDestroy(listTemp);
-          KV_PairDestroy(list);
-          return NULL;
-        }
-
-        /* Append a copy of a pair */
-        KV_AddTail(list, KV_PairCopy(pairIter));
-      }
-
-      strTemp = NULL;
-      KV_PairDestroy(listTemp);
-      continue;
-    }
-
-    /* Catch duplicate keys */
-    if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
-      if (ctx->_overwrite) {
-        KV_SetString(pairFind, strTemp);
-
-        KV_free(strKey);
-        KV_free(strTemp);
-        strKey = NULL;
-        strTemp = NULL;
-        continue;
-      }
-
-      KV_SetError(ctx, "Key already exists");
-      KV_free(strKey);
-      KV_free(strTemp);
+      /* Or errored out */
       KV_PairDestroy(list);
       return NULL;
     }
 
-    /* Add new key-value pair */
-    KV_AddTail(list, KV_NewString(strKey, strTemp));
+    /* Added a string value under some key */
+    if (KV_AddStringPair(ctx, list, strKey, strTemp)) {
+      KV_free(strKey);
+      KV_free(strTemp);
+      strKey = NULL;
+      continue;
+    }
 
+    /* Or errored out */
     KV_free(strKey);
     KV_free(strTemp);
-    strKey = NULL;
-    strTemp = NULL;
+    KV_PairDestroy(list);
+    return NULL;
   }
 
   return list;
