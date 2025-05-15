@@ -120,6 +120,10 @@ typedef struct _KV_Pair KV_Pair; /* Value of a specific type under a key */
  *********************************************************************************************************************************/
 
 
+/* Clears any previous error message. */
+void KV_ResetError(void);
+
+
 /* Returns a null-terminated string with the last set error.
  * This string is always temporary and should *not* be stored by pointer!
  */

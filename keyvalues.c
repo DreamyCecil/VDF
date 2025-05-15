@@ -131,7 +131,7 @@ typedef struct _KV_PrintContext {
 static char *_strError = NULL;
 static int _iErrorSet = 0; /* 0 - no; 1 - proper error; 2 - errno */
 
-KV_INLINE void KV_ResetError(void) {
+void KV_ResetError(void) {
   if (_strError && _iErrorSet == 1) {
     KV_free(_strError);
   }
@@ -144,14 +144,13 @@ KV_INLINE void KV_ResetError(void) {
  * If 'ctx' is non-NULL, prepends the error message with the current context line.
  */
 KV_INLINE void KV_SetError(KV_Context *ctx, const char *str) {
+  char *strLastError;
   size_t ctLen;
 
   assert(str);
 
-  /* Clear previous proper error */
-  if (_strError && _iErrorSet == 1) {
-    KV_free(_strError);
-  }
+  /* Remember the last proper error to free it at the end */
+  strLastError = (_iErrorSet == 1) ? _strError : NULL;
 
   /* Extra characters for extra text + null terminator */
   ctLen = strlen(str) + 64;
@@ -173,6 +172,9 @@ KV_INLINE void KV_SetError(KV_Context *ctx, const char *str) {
     _strError = strerror(errno);
     _iErrorSet = 2;
   }
+
+  /* Free previous error string */
+  if (strLastError) KV_free(strLastError);
 };
 
 const char *KV_GetError(void) {
