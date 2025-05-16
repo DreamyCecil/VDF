@@ -1141,12 +1141,17 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
   if (!listTemp) return KV_false;
 
   /* Append all pairs to the current list */
-  for (pairIter = listTemp->_value.head; pairIter; pairIter = pairIter->_next) {
+  pairIter = listTemp->_value.head;
+
+  while (pairIter) {
     /* Catch duplicate keys */
     if (!ctx->_multikey && (pairFind = KV_FindPair(list, pairIter->_key))) {
       /* Overwrite values under the same key */
       if (ctx->_overwrite) {
         KV_Swap(pairFind, pairIter);
+
+        /* Get the next subpair */
+        pairIter = pairIter->_next;
         continue;
       }
 
@@ -1157,8 +1162,12 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
       return KV_false;
     }
 
-    /* Move a pair over to the current list instead of copying it */
-    KV_AddTail(list, pairIter);
+    /* Remember the current subpair and get the next one */
+    pairFind = pairIter;
+    pairIter = pairIter->_next;
+
+    /* Move that subpair over to the current list instead of copying it */
+    KV_AddTail(list, pairFind);
   }
 
   KV_PairDestroy(listTemp);
