@@ -458,7 +458,7 @@ void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite) {
     list->_value.head = list->_value.tail = NULL;
   }
 
-  /* Add copies of all subpairs to this pair */
+  /* Add copies of all subpairs to this list */
   for (pairIter = other->_value.head; pairIter; pairIter = pairIter->_next)
   {
     /* Replace duplicate keys */
@@ -468,6 +468,39 @@ void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite) {
     }
 
     KV_AddTail(list, KV_PairCopy(pairIter));
+  }
+};
+
+void KV_MergeNodes(KV_Pair *list, KV_Pair *other, KV_bool moveNodes) {
+  KV_Pair *pairIter, *pairFind;
+  assert(list && other);
+
+  /* Both must be lists */
+  if (list->_type != KV_TYPE_NONE || other->_type != KV_TYPE_NONE) return;
+
+  /* Add copies of non-existent subpairs to this list */
+  pairIter = other->_value.head;
+
+  while (pairIter) {
+    /* Recursively merge existing subpairs */
+    if ((pairFind = KV_FindPair(list, pairIter->_key))) {
+      KV_MergeNodes(pairFind, pairIter, moveNodes);
+
+      /* Get the next subpair */
+      pairIter = pairIter->_next;
+      continue;
+    }
+
+    /* Remember the current subpair and get the next one */
+    pairFind = pairIter;
+    pairIter = pairIter->_next;
+
+    /* Move that subpair over to the current list instead of copying it */
+    if (moveNodes) {
+      KV_AddTail(list, pairFind);
+    } else {
+      KV_AddTail(list, KV_PairCopy(pairFind));
+    }
   }
 };
 

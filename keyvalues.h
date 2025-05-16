@@ -265,13 +265,23 @@ void KV_SetListFrom(KV_Pair *pair, KV_Pair *list);
 
 
 /* Copies the entire list of subpairs from 'other' and appends all of them at the end of 'list'.
- * If the pair was already set up with a non-list value, the previous data is cleared and replaced with an empty list.
+ * If 'list' was already set up with a non-list value, the previous data is cleared and replaced with an empty list.
  *
  * list - Pair to copy the list of subpairs into.
  * other - Pair to copy the list of subpairs from.
  * overwrite - Whether to overwrite existing values in 'list' with the new ones from 'other' under the same keys.
  */
 void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite);
+
+
+/* Goes through every subpair in 'other' and only adds new subpairs to 'list' that don't exist, recursively for each list.
+ * Both pairs must contain a list of subpairs for a value, otherwise it does nothing.
+ *
+ * list - List to merge all the pairs into.
+ * other - List to iterate through.
+ * moveNodes - Whether to simply move the nodes over from 'other' to 'list' instead of creating full copies of them.
+ */
+void KV_MergeNodes(KV_Pair *list, KV_Pair *other, KV_bool moveNodes);
 
 
 /* Replaces value of 'pair' with the copied value from 'other'.
