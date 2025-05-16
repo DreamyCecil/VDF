@@ -1207,6 +1207,26 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
   return KV_true;
 };
 
+KV_INLINE KV_bool KV_MergeBasePairs(KV_Context *ctx, KV_Pair *list, const char *strFile) {
+  KV_Context ctxInclude;
+  KV_Pair *listTemp;
+
+  /* Get the list from a file */
+  KV_ContextSetupFile(&ctxInclude, ctx->_directory, strFile);
+  KV_ContextCopyFlags(&ctxInclude, ctx);
+
+  listTemp = KV_ParseFileInternal(&ctxInclude);
+
+  /* Couldn't parse an included list */
+  if (!listTemp) return KV_false;
+
+  /* Moving nodes over from the temporary list to the current list */
+  KV_MergeNodes(list, listTemp, KV_true);
+
+  KV_PairDestroy(listTemp);
+  return KV_true;
+};
+
 KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *strKey) {
   KV_Pair *pairFind;
   KV_Pair *listTemp = KV_ParseBufferInternal(ctx, KV_true);
@@ -1330,9 +1350,24 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
     }
 
     /* Include macros */
-    if (!strncasecmp(strKey, "#base", 5) || !strncasecmp(strKey, "#include", 8)) {
+    if (!strncasecmp(strKey, "#include", 8)) {
       /* Added pairs from the included list */
       bIncluded = KV_AppendIncludedPairs(ctx, list, strTemp);
+
+      /* Free strings after macro execution */
+      KV_free(strKey);
+      KV_free(strTemp);
+      strKey = NULL;
+
+      if (bIncluded) continue;
+
+      /* Or errored out */
+      KV_PairDestroy(list);
+      return NULL;
+
+    } else if (!strncasecmp(strKey, "#base", 5)) {
+      /* Added pairs from the included list */
+      bIncluded = KV_MergeBasePairs(ctx, list, strTemp);
 
       /* Free strings after macro execution */
       KV_free(strKey);

@@ -97,8 +97,8 @@ Macros are specific commands that are executed after parsing a proper key-value 
 
 | Macro      | Purpose | Usage example |
 | ---------- | ------- | ------------- |
-| `#base`    | Includes key-value pairs of the specified file within currently parsed list. | `#base "C:\\absolute_path\\to_file\\on_disk.txt"` |
-| `#include` | The exact same behavior as `#base`. | `#include "OrMaybeRelativeToCWD.txt"` |
+| `#base`    | Recursively merges key-value pairs of the specified file with the currently parsed list, preserving already existing values under the same keys. | `#base "C:\\absolute_path\\to_file\\on_disk.txt"` |
+| `#include` | Appends key-value pairs of the specified file at the end of the currently parsed list. | `#include "OrMaybeRelativeToCWD.txt"` |
 
 **Valid macros:**
 ```js
