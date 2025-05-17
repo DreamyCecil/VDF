@@ -194,7 +194,7 @@ void KV_ContextSetupBuffer(KV_Context *ctx, const char *directory, const char *b
   ctx->_pch = buffer;
   ctx->_line = 1;
 
-  KV_ContextSetFlags(ctx, KV_true, KV_false, KV_true);
+  KV_ContextSetFlags(ctx, KV_true, KV_true, KV_true);
 };
 
 void KV_ContextSetupFile(KV_Context *ctx, const char *directory, const char *path) {
