@@ -1160,21 +1160,20 @@ KV_INLINE KV_bool KV_ParseComments(KV_Context *ctx)
   return KV_true;
 };
 
-KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const char *strFile) {
-  KV_Context ctxInclude;
-  KV_Pair *listTemp, *pairIter, *pairFind;
-
+KV_INLINE KV_Pair *KV_IncludeFile(KV_Context *ctx, const char *strFile) {
   /* Get the list from a file */
+  KV_Context ctxInclude;
   KV_ContextSetupFile(&ctxInclude, ctx->_directory, strFile);
   KV_ContextCopyFlags(&ctxInclude, ctx);
 
-  listTemp = KV_ParseFileInternal(&ctxInclude);
+  return KV_ParseFileInternal(&ctxInclude);
+};
 
-  /* Couldn't parse an included list */
-  if (!listTemp) return KV_false;
+KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude) {
+  KV_Pair *pairIter, *pairFind;
 
   /* Append all pairs to the current list */
-  pairIter = listTemp->_value.head;
+  pairIter = listInclude->_value.head;
 
   while (pairIter) {
     /* Catch duplicate keys */
@@ -1190,8 +1189,6 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
 
       /* Or throw an error */
       KV_SetError(ctx, "Key already exists");
-
-      KV_PairDestroy(listTemp);
       return KV_false;
     }
 
@@ -1203,27 +1200,12 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, const c
     KV_AddTail(list, pairFind);
   }
 
-  KV_PairDestroy(listTemp);
   return KV_true;
 };
 
-KV_INLINE KV_bool KV_MergeBasePairs(KV_Context *ctx, KV_Pair *list, const char *strFile) {
-  KV_Context ctxInclude;
-  KV_Pair *listTemp;
-
-  /* Get the list from a file */
-  KV_ContextSetupFile(&ctxInclude, ctx->_directory, strFile);
-  KV_ContextCopyFlags(&ctxInclude, ctx);
-
-  listTemp = KV_ParseFileInternal(&ctxInclude);
-
-  /* Couldn't parse an included list */
-  if (!listTemp) return KV_false;
-
+KV_INLINE KV_bool KV_MergeBasePairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude) {
   /* Moving nodes over from the temporary list to the current list */
-  KV_MergeNodes(list, listTemp, KV_true);
-
-  KV_PairDestroy(listTemp);
+  KV_MergeNodes(list, listInclude, KV_true);
   return KV_true;
 };
 
@@ -1282,16 +1264,69 @@ KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *s
   return KV_true;
 };
 
+/* Expanding array of lists to include in the current list */
+typedef struct _KV_Includes {
+  KV_Pair **aLists;
+  size_t ctArray;
+  size_t ctUsed;
+} KV_Includes;
+
+KV_INLINE void KV_InitIncludes(KV_Includes *incl) {
+  incl->aLists = NULL;
+  incl->ctArray = incl->ctUsed = 0;
+};
+
+KV_INLINE void KV_DestroyIncludes(KV_Includes *incl) {
+  size_t i;
+
+  if (!incl->aLists) return;
+
+  /* Destroy all lists */
+  for (i = 0; i < incl->ctUsed; ++i) {
+    KV_PairDestroy(incl->aLists[i]);
+  }
+
+  /* Free the array */
+  KV_free(incl->aLists);
+};
+
+KV_INLINE void KV_AddInclude(KV_Includes *incl, KV_Pair *list) {
+  assert(incl->ctUsed <= incl->ctArray);
+
+  /* If all array slots have been used up */
+  if (incl->ctUsed == incl->ctArray) {
+    incl->ctArray += 32;
+
+    /* Expand the array */
+    if (incl->aLists) {
+      incl->aLists = (KV_Pair **)KV_realloc(incl->aLists, incl->ctArray * sizeof(KV_Pair *));
+
+    /* Allocate a new array */
+    } else {
+      incl->aLists = (KV_Pair **)KV_malloc(incl->ctArray * sizeof(KV_Pair *));
+    }
+  }
+
+  /* Add a new list at the end */
+  incl->aLists[incl->ctUsed++] = list;
+};
+
 KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   KV_Pair *list;
   const char *pchCheck;
 
   char *strTemp;
   char *strKey;
-  KV_bool bIncluded;
+
+  KV_Includes inclIncludeFiles, inclBaseFiles;
+  KV_Pair *listInclude;
+  size_t iInclude;
 
   list = KV_NewList(NULL);
   strKey = NULL; /* Set to a valid string if expecting a value for a complete pair */
+
+  KV_InitIncludes(&inclIncludeFiles);
+  KV_InitIncludes(&inclBaseFiles);
 
   while (!KV_ContextBufferEnded(ctx)) {
     /* Parse line breaks and comments */
@@ -1317,12 +1352,15 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
 
       /* Or errored out */
       KV_free(strKey);
+
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
       KV_PairDestroy(list);
       return NULL;
     }
 
     /* List end, if not expecting a value */
-    if (inner && !strKey && *pchCheck == '}') return list;
+    if (inner && !strKey && *pchCheck == '}') break;
 
     /* Strings: Parse all characters until another double quote */
     if (*pchCheck == '"') {
@@ -1339,6 +1377,8 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
       /* Free remembered key string */
       if (strKey) KV_free(strKey);
 
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
       KV_PairDestroy(list);
       return NULL;
     }
@@ -1352,31 +1392,41 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
     /* Include macros */
     if (!strncasecmp(strKey, "#include", 8)) {
       /* Added pairs from the included list */
-      bIncluded = KV_AppendIncludedPairs(ctx, list, strTemp);
+      listInclude = KV_IncludeFile(ctx, strTemp);
 
       /* Free strings after macro execution */
       KV_free(strKey);
       KV_free(strTemp);
       strKey = NULL;
 
-      if (bIncluded) continue;
+      if (listInclude) {
+        KV_AddInclude(&inclIncludeFiles, listInclude);
+        continue;
+      }
 
       /* Or errored out */
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
       KV_PairDestroy(list);
       return NULL;
 
     } else if (!strncasecmp(strKey, "#base", 5)) {
       /* Added pairs from the included list */
-      bIncluded = KV_MergeBasePairs(ctx, list, strTemp);
+      listInclude = KV_IncludeFile(ctx, strTemp);
 
       /* Free strings after macro execution */
       KV_free(strKey);
       KV_free(strTemp);
       strKey = NULL;
 
-      if (bIncluded) continue;
+      if (listInclude) {
+        KV_AddInclude(&inclBaseFiles, listInclude);
+        continue;
+      }
 
       /* Or errored out */
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
       KV_PairDestroy(list);
       return NULL;
     }
@@ -1392,10 +1442,42 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
     /* Or errored out */
     KV_free(strKey);
     KV_free(strTemp);
+
+    KV_DestroyIncludes(&inclIncludeFiles);
+    KV_DestroyIncludes(&inclBaseFiles);
     KV_PairDestroy(list);
     return NULL;
   }
 
+  /* Append included pairs */
+  for (iInclude = 0; iInclude < inclIncludeFiles.ctUsed; ++iInclude)
+  {
+    if (!KV_AppendIncludedPairs(ctx, list, inclIncludeFiles.aLists[iInclude]))
+    {
+      /* We were so close */
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
+      KV_PairDestroy(list);
+      return NULL;
+    }
+  }
+
+  /* Merge base pairs */
+  for (iInclude = 0; iInclude < inclBaseFiles.ctUsed; ++iInclude)
+  {
+    if (!KV_MergeBasePairs(ctx, list, inclBaseFiles.aLists[iInclude]))
+    {
+      /* We were so close */
+      KV_DestroyIncludes(&inclIncludeFiles);
+      KV_DestroyIncludes(&inclBaseFiles);
+      KV_PairDestroy(list);
+      return NULL;
+    }
+  }
+
+  /* Done parsing the buffer */
+  KV_DestroyIncludes(&inclIncludeFiles);
+  KV_DestroyIncludes(&inclBaseFiles);
   return list;
 };
 
