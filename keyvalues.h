@@ -111,6 +111,7 @@ typedef enum _KV_DataType {
 } KV_DataType;
 
 
+typedef struct _KV_Printer KV_Printer; /* Context for printing strings in infinite character buffers */
 typedef struct _KV_Context KV_Context; /* Parser context for reading VDF contents */
 typedef struct _KV_Pair KV_Pair; /* Value of a specific type under a key */
 
@@ -128,6 +129,63 @@ void KV_ResetError(void);
  * This string is always temporary and should *not* be stored by pointer!
  */
 const char *KV_GetError(void);
+
+
+/*********************************************************************************************************************************
+ * String printer
+ *********************************************************************************************************************************/
+
+
+struct _KV_Printer {
+  char *_buffer;
+  size_t _length;
+  size_t _expansionstep;
+
+  /* Temporary */
+  char *_current;
+  size_t _left;
+  int _written;
+};
+
+
+/* Initialize a string printer.
+ * The initialized printer must be cleared using KV_PrinterClear() when not needed anymore.
+ *
+ * ctx - String printer to initialize.
+ * expansionstep - Amount of bytes to add to the string each time it is expanded and reallocated.
+ */
+void KV_PrinterInit(KV_Printer *ctx, size_t expansionstep);
+
+
+/* Clears previously initialized string printer.
+ * If the printer buffer was accessed using KV_PrinterGetBuffer() at any point, it becomes invalid.
+ */
+void KV_PrinterClear(KV_Printer *ctx);
+
+
+/* Returns current character buffer of a string printer.
+ * This string is always temporary and should *not* be stored by pointer!
+ *
+ * ctx - String printer to retrieve the character buffer from.
+ * length - An optional pointer to that will be filled with the returned buffer length afterwards.
+ */
+char *KV_PrinterGetBuffer(KV_Printer *ctx, size_t *length);
+
+
+/* Resets the current position in a string printer to the very beginning of the buffer.
+ * Any subsequent string printing using KV_PrinterFormat() overwrites previous buffer contents.
+ */
+void KV_PrinterResetString(KV_Printer *ctx);
+
+
+/* Format a string and append it at the end of the current character buffer of a string printer.
+ * This function internally relies on the standard vsnprintf() function.
+ *
+ * ctx - String printer to append a formatted string to.
+ * format - A null-terminated string specifying how to interpret the data.
+ * ... - Arguments specifying data to print.
+ */
+void KV_PrinterFormat(KV_Printer *ctx, const char *format, ...);
 
 
 /*********************************************************************************************************************************

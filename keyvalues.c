@@ -54,7 +54,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   #define _CRT_SECURE_NO_WARNINGS
 
   #if _MSC_VER < 1900
-    #define snprintf _snprintf
+    #define snprintf  _snprintf
+    #define vsnprintf _vsnprintf
   #endif
 
   #define strncasecmp _strnicmp
@@ -62,6 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
 #include <assert.h>
@@ -113,16 +115,6 @@ struct _KV_Pair {
   KV_Pair *_prev; /* Previous neighboring pair or NULL for the head */
   KV_Pair *_next; /* Next neighboring pair or NULL for the tail */
 };
-
-typedef struct _KV_PrintContext {
-  char *_buffer;
-  size_t _length;
-  size_t _expansionstep;
-
-  /* Temporary */
-  char *_current;
-  size_t _left;
-} KV_PrintContext;
 
 /*********************************************************************************************************************************
  * Error handling
@@ -182,6 +174,71 @@ const char *KV_GetError(void) {
 };
 
 /*********************************************************************************************************************************
+ * String printer
+ *********************************************************************************************************************************/
+
+void KV_PrinterInit(KV_Printer *ctx, size_t expansionstep) {
+  assert(expansionstep != 0);
+  ctx->_left = ctx->_length = ctx->_expansionstep = expansionstep;
+
+  ctx->_buffer = (char *)KV_malloc(ctx->_length);
+  ctx->_current = ctx->_buffer;
+
+  ctx->_buffer[0] = '\0';
+};
+
+void KV_PrinterClear(KV_Printer *ctx) {
+  KV_free(ctx->_buffer);
+
+  ctx->_buffer = NULL;
+  ctx->_length = 0;
+};
+
+char *KV_PrinterGetBuffer(KV_Printer *ctx, size_t *length) {
+  if (length) *length = ctx->_length;
+  return ctx->_buffer;
+};
+
+void KV_PrinterResetString(KV_Printer *ctx) {
+  ctx->_current = ctx->_buffer;
+  ctx->_left = ctx->_length;
+};
+
+KV_INLINE KV_bool KV_PrinterExpandIfNeeded(KV_Printer *ctx) {
+  size_t iOffset;
+
+  /* String has been written correctly, no need to expand */
+  if (ctx->_written >= 0 && (size_t)ctx->_written < ctx->_left)
+  {
+    ctx->_current += ctx->_written;
+    ctx->_left -= ctx->_written;
+    return KV_false;
+  }
+
+  /* Expand the buffer */
+  iOffset = ctx->_current - ctx->_buffer;
+
+  ctx->_length += ctx->_expansionstep;
+  ctx->_buffer = (char *)KV_realloc(ctx->_buffer, ctx->_length);
+
+  ctx->_current = ctx->_buffer + iOffset;
+  ctx->_left = ctx->_length - iOffset;
+
+  return KV_true;
+};
+
+void KV_PrinterFormat(KV_Printer *ctx, const char *format, ...) {
+  va_list arg;
+  va_start(arg, format);
+
+  do {
+    ctx->_written = vsnprintf(ctx->_current, ctx->_left, format, arg);
+  } while (KV_PrinterExpandIfNeeded(ctx));
+
+  va_end(arg);
+};
+
+/*********************************************************************************************************************************
  * Parser context
  *********************************************************************************************************************************/
 
@@ -228,36 +285,6 @@ KV_INLINE KV_bool KV_ContextBufferEnded(KV_Context *ctx) {
 
   /* Reached the maximum length */
   return ((size_t)(ctx->_pch - ctx->_buffer) >= ctx->_length) ? KV_true : KV_false;
-};
-
-KV_INLINE void KV_PrintContextSetup(KV_PrintContext *ctx, size_t step) {
-  ctx->_left = ctx->_length = ctx->_expansionstep = step;
-
-  ctx->_buffer = (char *)KV_malloc(ctx->_length);
-  ctx->_current = ctx->_buffer;
-};
-
-KV_INLINE KV_bool KV_PrintContextNeedToExpand(KV_PrintContext *ctx, int iWritten) {
-  size_t iOffset;
-
-  /* String has been written correctly, no need to expand */
-  if (iWritten >= 0 && (size_t)iWritten < ctx->_left)
-  {
-    ctx->_current += iWritten;
-    ctx->_left -= iWritten;
-    return KV_false;
-  }
-
-  /* Expand the buffer */
-  iOffset = ctx->_current - ctx->_buffer;
-
-  ctx->_length += ctx->_expansionstep;
-  ctx->_buffer = (char *)KV_realloc(ctx->_buffer, ctx->_length);
-
-  ctx->_current = ctx->_buffer + iOffset;
-  ctx->_left = ctx->_length - iOffset;
-
-  return KV_true;
 };
 
 /*********************************************************************************************************************************
@@ -594,11 +621,10 @@ KV_INLINE char *KV_ConvertEscapeSeq(char *pch) {
   return str;
 };
 
-static KV_bool KV_PrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t depth, const char *indentation) {
+static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, const char *indentation) {
   KV_bool bValueAfterKey;
   char *strIndent;
   size_t ct;
-  int iWritten;
   KV_Pair *pairIter;
   char *strValue;
 
@@ -630,24 +656,13 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t dept
     return KV_false;
   }
 
-/* Convenience macros that keep reallocating the buffer until the printed string fits */
-#define PRINT1(_Format, _Arg1) \
-  do { \
-    iWritten = snprintf(ctx->_current, ctx->_left, _Format, _Arg1); \
-  } while (KV_PrintContextNeedToExpand(ctx, iWritten));
-
-#define PRINT2(_Format, _Arg1, _Arg2) \
-  do { \
-    iWritten = snprintf(ctx->_current, ctx->_left, _Format, _Arg1, _Arg2); \
-  } while (KV_PrintContextNeedToExpand(ctx, iWritten));
-
   /* Print a key */
-  if (bValueAfterKey) PRINT2("%s\"%s\"", strIndent, pair->_key);
+  if (bValueAfterKey) KV_PrinterFormat(ctx, "%s\"%s\"", strIndent, pair->_key);
 
   /* Print a value */
   switch (pair->_type) {
     case KV_TYPE_NONE: {
-      if (bValueAfterKey) PRINT1("\n%s{\n", strIndent);
+      if (bValueAfterKey) KV_PrinterFormat(ctx, "\n%s{\n", strIndent);
 
       /* Print each pair in the list */
       for (pairIter = pair->_value.head; pairIter; pairIter = pairIter->_next)
@@ -658,7 +673,7 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t dept
         }
       }
 
-      if (bValueAfterKey) PRINT1("%s}\n", strIndent);
+      if (bValueAfterKey) KV_PrinterFormat(ctx, "%s}\n", strIndent);
 
       KV_free(strIndent);
     } return KV_true;
@@ -667,9 +682,9 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t dept
       strValue = KV_ConvertEscapeSeq(pair->_value.str);
 
       if (bValueAfterKey) {
-        PRINT2("%s\"%s\"\n", indentation, strValue);
+        KV_PrinterFormat(ctx, "%s\"%s\"\n", indentation, strValue);
       } else {
-        PRINT1("\"%s\"\n", strValue);
+        KV_PrinterFormat(ctx, "\"%s\"\n", strValue);
       }
 
       KV_free(strValue);
@@ -686,23 +701,18 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_PrintContext *ctx, size_t dept
   KV_SetError(NULL, "Unknown value type");
   KV_free(strIndent);
   return KV_false;
-
-#undef PRINT1
-#undef PRINT2
 };
 
 char *KV_Print(KV_Pair *pair, size_t *length, size_t expansionstep, const char *indentation) {
-  KV_PrintContext ctx;
-  KV_PrintContextSetup(&ctx, expansionstep);
+  KV_Printer printer;
+  KV_PrinterInit(&printer, expansionstep);
 
-  if (KV_PrintInternal(pair, &ctx, 0, indentation))
-  {
-    if (length) *length = ctx._length;
-    return ctx._buffer;
+  if (KV_PrintInternal(pair, &printer, 0, indentation)) {
+    return KV_PrinterGetBuffer(&printer, length);
   }
 
   /* Free buffer on error */
-  KV_free(ctx._buffer);
+  KV_PrinterClear(&printer);
   return NULL;
 };
 
