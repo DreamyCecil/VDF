@@ -60,8 +60,9 @@ static const char *_vdf = " \
 ";
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  printf("---------------- READING ----------------\n");
+
   KV_Pair *list;
   char *buffer;
 

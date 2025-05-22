@@ -47,8 +47,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include "../keyvalues.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  printf("---------------- WRITING ----------------\n");
+
   // Create a root pair
   KV_Pair *list = KV_NewList(NULL);
 

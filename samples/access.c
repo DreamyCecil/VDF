@@ -47,8 +47,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include "../keyvalues.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  printf("---------------- ACCESS ----------------\n");
+
   KV_Pair *list = KV_ParseFile("sample.vdf");
 
   if (!list) {

@@ -47,8 +47,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include "../keyvalues.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  printf("---------------- CONTEXTS ----------------\n");
+
   // Setup context for opening a file in the current working directory
   KV_Context ctx;
   KV_ContextSetupFile(&ctx, "", "sample.vdf");

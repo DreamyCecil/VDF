@@ -45,11 +45,11 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include <stdio.h>
-#include <string.h>
 #include "../keyvalues.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  printf("---------------- ITERATION ----------------\n");
+
   KV_Pair *list = KV_ParseFile("sample.vdf");
 
   if (!list) {
