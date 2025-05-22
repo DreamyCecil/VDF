@@ -19,6 +19,8 @@ endmacro()
 
 add_vdf_sample(access)
 add_vdf_sample(contexts)
+add_vdf_sample(errors)
+add_vdf_sample(includes)
 add_vdf_sample(iteration)
 add_vdf_sample(reading)
 add_vdf_sample(writing)

@@ -1,0 +1,7 @@
+key1  "base1_value_1"
+key2  "base1_value_2"
+
+key3 {
+  inner1  "base1_inner_1"
+  inner2  "base1_inner_2"
+}
