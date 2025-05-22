@@ -121,7 +121,7 @@ typedef struct _KV_Pair KV_Pair; /* Value of a specific type under a key */
  *********************************************************************************************************************************/
 
 
-/* Clears any previous error message. */
+/* Clears any previous error message and frees all memory used by it. */
 void KV_ResetError(void);
 
 

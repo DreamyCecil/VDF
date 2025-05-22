@@ -54,7 +54,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   #define _CRT_SECURE_NO_WARNINGS
 
   #if _MSC_VER < 1900
-    #define snprintf  _snprintf
     #define vsnprintf _vsnprintf
   #endif
 
@@ -132,10 +131,10 @@ void KV_ResetError(void) {
   _iErrorSet = 0;
 };
 
-/* Set new last error message.
- * If 'ctx' is non-NULL, prepends the error message with the current context line.
+/* Sets a last error message within specific context.
+ * If 'ctx' is non-NULL, prepends the error message with the specified context line.
  */
-KV_INLINE void KV_SetError(KV_Context *ctx, const char *str) {
+KV_INLINE void KV_SetContextError(KV_Context *ctx, size_t iLine, const char *str) {
   char *strLastError;
   size_t ctLen;
 
@@ -146,12 +145,32 @@ KV_INLINE void KV_SetError(KV_Context *ctx, const char *str) {
 
   /* Extra characters for extra text + null terminator */
   ctLen = strlen(str) + 64;
+
+  /* Current file path */
+  if (ctx) {
+    if (ctx->_directory) ctLen += strlen(ctx->_directory);
+    if (ctx->_file) ctLen += strlen(ctx->_file);
+  }
+
   _strError = (char *)KV_malloc(ctLen);
 
   if (_strError) {
     /* Within parser context */
     if (ctx) {
-      sprintf(_strError, "Line %ld : %s", ctx->_line, str);
+      /* File */
+      if (ctx->_file) {
+        /* Disregard the directory if it's an empty string or the file path is absolute */
+        if (!*ctx->_directory || IsPathStringAbsolute(ctx->_file)) {
+          sprintf(_strError, "\"%s\" at line %ld : %s", ctx->_file, iLine, str);
+
+        } else {
+          sprintf(_strError, "\"%s%s\" at line %ld : %s", ctx->_directory, ctx->_file, iLine, str);
+        }
+
+      /* Character buffer */
+      } else {
+        sprintf(_strError, "(buffer) at line %ld : %s", iLine, str);
+      }
 
     /* Generic error */
     } else {
@@ -167,6 +186,12 @@ KV_INLINE void KV_SetError(KV_Context *ctx, const char *str) {
 
   /* Free previous error string */
   if (strLastError) KV_free(strLastError);
+};
+
+/* Sets a generic last error message.
+ */
+KV_INLINE void KV_SetError(const char *str) {
+  KV_SetContextError(NULL, 0, str);
 };
 
 const char *KV_GetError(void) {
@@ -652,7 +677,7 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, co
 
   /* Otherwise the value without key cannot be printed */
   } else {
-    KV_SetError(NULL, "Subpair has no key");
+    KV_SetError("Subpair has no key");
     return KV_false;
   }
 
@@ -698,7 +723,7 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, co
   /* Unknown value type */
   assert(!"Unknown value type");
 
-  KV_SetError(NULL, "Unknown value type");
+  KV_SetError("Unknown value type");
   KV_free(strIndent);
   return KV_false;
 };
@@ -990,7 +1015,12 @@ char *KV_GetString(KV_Pair *pair) {
 
 static KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner);
 
-KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx) {
+/* Parses a new file and constructs a new list out of its contents.
+ *
+ * ctx - Context for parsing a new file.
+ * ctxParent - Context of the parser that's including this new file (may be NULL).
+ */
+KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx, KV_Context *ctxParent) {
   FILE *file;
   char *str;
   KV_Pair *list;
@@ -1015,7 +1045,12 @@ KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx) {
     strcpy(str, "Cannot include file: ");
     strcat(str, strerror(errno));
 
-    KV_SetError(ctx, str);
+    if (ctxParent) {
+      KV_SetContextError(ctxParent, ctxParent->_line, str);
+    } else {
+      KV_SetError(str);
+    }
+
     KV_free(str);
     return NULL;
   }
@@ -1033,6 +1068,9 @@ KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx) {
   /* Parse file contents and then free them */
   KV_ContextSetupBuffer(&ctxParse, ctx->_directory, str, ctx->_length);
   KV_ContextCopyFlags(&ctxParse, ctx);
+
+  /* For error output */
+  ctxParse._file = ctx->_file;
 
   list = KV_ParseBufferInternal(&ctxParse, KV_false);
   KV_free(str);
@@ -1068,7 +1106,7 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
       /* Fine with unquoted strings */
       if (!onlyquotes) break;
 
-      KV_SetError(ctx, "Unclosed string");
+      KV_SetContextError(ctx, ctx->_line, "Unclosed string");
       KV_free(str);
       return NULL;
     }
@@ -1176,10 +1214,10 @@ KV_INLINE KV_Pair *KV_IncludeFile(KV_Context *ctx, const char *strFile) {
   KV_ContextSetupFile(&ctxInclude, ctx->_directory, strFile);
   KV_ContextCopyFlags(&ctxInclude, ctx);
 
-  return KV_ParseFileInternal(&ctxInclude);
+  return KV_ParseFileInternal(&ctxInclude, ctx);
 };
 
-KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude) {
+KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude, size_t iLine) {
   KV_Pair *pairIter, *pairFind;
 
   /* Append all pairs to the current list */
@@ -1198,7 +1236,7 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair
       }
 
       /* Or throw an error */
-      KV_SetError(ctx, "Key already exists");
+      KV_SetContextError(ctx, iLine, "Included key already exists");
       return KV_false;
     }
 
@@ -1213,7 +1251,7 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair
   return KV_true;
 };
 
-KV_INLINE KV_bool KV_MergeBasePairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude) {
+KV_INLINE KV_bool KV_MergeBasePairs(KV_Pair *list, KV_Pair *listInclude) {
   /* Moving nodes over from the temporary list to the current list */
   KV_MergeNodes(list, listInclude, KV_true);
   return KV_true;
@@ -1240,7 +1278,7 @@ KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *
     }
 
     /* Or throw an error */
-    KV_SetError(ctx, "Key already exists");
+    KV_SetContextError(ctx, ctx->_line, "Key already exists");
 
     KV_PairDestroy(listTemp);
     return KV_false;
@@ -1265,7 +1303,7 @@ KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *s
     }
 
     /* Or throw an error */
-    KV_SetError(ctx, "Key already exists");
+    KV_SetContextError(ctx, ctx->_line, "Key already exists");
     return KV_false;
   }
 
@@ -1277,12 +1315,15 @@ KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *s
 /* Expanding array of lists to include in the current list */
 typedef struct _KV_Includes {
   KV_Pair **aLists;
+  size_t *aLines;
+
   size_t ctArray;
   size_t ctUsed;
 } KV_Includes;
 
 KV_INLINE void KV_InitIncludes(KV_Includes *incl) {
   incl->aLists = NULL;
+  incl->aLines = NULL;
   incl->ctArray = incl->ctUsed = 0;
 };
 
@@ -1296,29 +1337,35 @@ KV_INLINE void KV_DestroyIncludes(KV_Includes *incl) {
     KV_PairDestroy(incl->aLists[i]);
   }
 
-  /* Free the array */
+  /* Free the arrays */
   KV_free(incl->aLists);
+  KV_free(incl->aLines);
 };
 
-KV_INLINE void KV_AddInclude(KV_Includes *incl, KV_Pair *list) {
+KV_INLINE void KV_AddInclude(KV_Includes *incl, KV_Pair *list, size_t iLine) {
   assert(incl->ctUsed <= incl->ctArray);
 
   /* If all array slots have been used up */
   if (incl->ctUsed == incl->ctArray) {
     incl->ctArray += 32;
 
-    /* Expand the array */
+    /* Expand the arrays */
     if (incl->aLists) {
       incl->aLists = (KV_Pair **)KV_realloc(incl->aLists, incl->ctArray * sizeof(KV_Pair *));
+      incl->aLines = (size_t   *)KV_realloc(incl->aLines, incl->ctArray * sizeof(size_t));
 
-    /* Allocate a new array */
+    /* Allocate new arrays */
     } else {
       incl->aLists = (KV_Pair **)KV_malloc(incl->ctArray * sizeof(KV_Pair *));
+      incl->aLines = (size_t   *)KV_malloc(incl->ctArray * sizeof(size_t));
     }
   }
 
-  /* Add a new list at the end */
-  incl->aLists[incl->ctUsed++] = list;
+  /* Add a new list at the end at the current line */
+  incl->aLists[incl->ctUsed] = list;
+  incl->aLines[incl->ctUsed] = iLine;
+
+  ++incl->ctUsed;
 };
 
 KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
@@ -1410,7 +1457,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
       strKey = NULL;
 
       if (listInclude) {
-        KV_AddInclude(&inclIncludeFiles, listInclude);
+        KV_AddInclude(&inclIncludeFiles, listInclude, ctx->_line);
         continue;
       }
 
@@ -1430,7 +1477,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
       strKey = NULL;
 
       if (listInclude) {
-        KV_AddInclude(&inclBaseFiles, listInclude);
+        KV_AddInclude(&inclBaseFiles, listInclude, ctx->_line);
         continue;
       }
 
@@ -1462,7 +1509,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   /* Append included pairs */
   for (iInclude = 0; iInclude < inclIncludeFiles.ctUsed; ++iInclude)
   {
-    if (!KV_AppendIncludedPairs(ctx, list, inclIncludeFiles.aLists[iInclude]))
+    if (!KV_AppendIncludedPairs(ctx, list, inclIncludeFiles.aLists[iInclude], inclIncludeFiles.aLines[iInclude]))
     {
       /* We were so close */
       KV_DestroyIncludes(&inclIncludeFiles);
@@ -1475,7 +1522,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   /* Merge base pairs */
   for (iInclude = 0; iInclude < inclBaseFiles.ctUsed; ++iInclude)
   {
-    if (!KV_MergeBasePairs(ctx, list, inclBaseFiles.aLists[iInclude]))
+    if (!KV_MergeBasePairs(list, inclBaseFiles.aLists[iInclude]))
     {
       /* We were so close */
       KV_DestroyIncludes(&inclIncludeFiles);
@@ -1495,7 +1542,7 @@ KV_Pair *KV_Parse(KV_Context *ctx) {
   assert(ctx);
 
   if (ctx->_file) {
-    return KV_ParseFileInternal(ctx);
+    return KV_ParseFileInternal(ctx, NULL);
   }
 
   return KV_ParseBufferInternal(ctx, KV_false);
@@ -1516,7 +1563,7 @@ KV_Pair *KV_ParseFile(const char *path) {
   assert(path);
   KV_ContextSetupFile(&ctx, "", path);
 
-  return KV_ParseFileInternal(&ctx);
+  return KV_ParseFileInternal(&ctx, NULL);
 };
 
 KV_bool KV_Save(KV_Pair *pair, const char *path) {
@@ -1526,7 +1573,7 @@ KV_bool KV_Save(KV_Pair *pair, const char *path) {
   assert(pair && path);
 
   if (!pair || !path) {
-    KV_SetError(NULL, "No pair or path specified");
+    KV_SetError("No pair or path specified");
     return KV_false;
   }
 
@@ -1537,7 +1584,7 @@ KV_bool KV_Save(KV_Pair *pair, const char *path) {
     strcpy(str, "Cannot open file for writing: ");
     strcat(str, strerror(errno));
 
-    KV_SetError(NULL, str);
+    KV_SetError(str);
     KV_free(str);
     return KV_false;
   }
