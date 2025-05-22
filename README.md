@@ -2,8 +2,10 @@
 
 This is a simple reader/writer of [Valve Data Format (a.k.a. KeyValues)](https://developer.valvesoftware.com/wiki/KeyValues) written in ANSI C.
 
-This library was made as a sort of an exercise in C, since I mainly use C++.  
-Hopefully no memory leaks! But if there still are, feel free to submit an issue or a pull request.
+This library was made as a sort of an exercise in C, since I mainly use C++.
+
+Hopefully no memory leaks! But if there still are, feel free to submit an issue or a pull request.  
+I tried making sure that all allocated memory was fully and properly freed before program termination.
 
 See [`DOCUMENTATION.md`](DOCUMENTATION.md) file for more information.
 
@@ -19,16 +21,18 @@ See [`DOCUMENTATION.md`](DOCUMENTATION.md) file for more information.
 - The files are written using `fopen()` with `"w"` in order to insert platform-specific line breaks.
 
 ### Other
-- Case-insensitive `#base` & `#include` macro support that includes files from absolute paths or relative to the specified base directory.
 - Keys and string values of any length.
+- Support for CPP-styled single-line comments (`//`) and C-styled block comments (`/* */`).
 - Context flags for toggling specific features:
-  - Support for escape sequences in strings.
-  - Support for multiple values under the same key name.
-  - Value replacement in duplicate keys, if the aforementioned multi-key support is disabled.
+  - Support for escape sequences in strings (**ON** by default).
+  - Support for multiple values under the same key name (**ON** by default).
+  - Value replacement in duplicate keys, if multi-key support is disabled (**ON** by default).
+- Case-insensitive `#base` & `#include` macro support that includes files from absolute paths or relative to the specified base directory.
+  - The behavior of each inclusion macro is identical to Source SDK 2013.
+  - Context flags for multi-key support and value replacement in duplicate keys are ignored when merging pairs using `#base` due to its unique behavior.
 
 ### Currently unsupported
 - Conditional statements before the pairs, e.g. `[$WIN32] "key" "value"`.
-- Multiline/block comments.
 - Non-ASCII encodings.
 
 # How to use
