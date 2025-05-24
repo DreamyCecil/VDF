@@ -29,9 +29,9 @@ See [`DOCUMENTATION.md`](DOCUMENTATION.md) file for more information.
   - Value replacement in duplicate keys, if multi-key support is disabled (**ON** by default).
 - Case-insensitive `#base` & `#include` macro support that includes files from absolute paths or relative to the specified base directory.
   - The behavior of each inclusion macro is identical to Source SDK 2013.
-  - Context flags for multi-key support and value replacement in duplicate keys are ignored when merging pairs using `#base` due to its unique behavior.
+  - Context flags for multi-key support and value replacement in duplicate keys are ignored when merging pairs using `#base` due to its unique behavior.
 
-### Currently unsupported
+### Currently not supported
 - Conditional statements before the pairs, e.g. `[$WIN32] "key" "value"`.
 - Non-ASCII encodings.
 
