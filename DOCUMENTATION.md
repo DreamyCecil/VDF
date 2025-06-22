@@ -102,19 +102,19 @@ Macros are specific commands that are executed after parsing a proper key-value 
 
 **Valid macros:**
 ```js
-// Adds all pairs from the included file to the global list before "inner"
+// Merges all pairs from the included file with the global list after parsing it
 #base  "AnotherList.txt"
 
 "inner" {
   "key1"  Hello
 
-  // Adds all pairs from the included file to the "inner" list between "key1" and "key2"
+  // Adds all pairs from the included file to the "inner" list after parsing it
   "#include"  inner.txt
 
   "key2"  World
 }
 
-// Adds all pairs from the included file at the end of the global list
+// Adds all pairs from the included file after parsing the global list
 #include  Extras.txt
 ```
 
