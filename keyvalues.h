@@ -426,24 +426,24 @@ KV_Pair *KV_GetTail(KV_Pair *list);
 
 
 /* Prepends a new subpair at the beginning of a list.
- * If the pair value isn't a list, it does nothing.
- * KV_PairDestroy() should *not* be called on 'other' after this because it's not copied!
+ * If the 'list' pair value isn't a list, it does nothing.
+ * KV_PairDestroy() should *not* be called on 'other' after this because 'list' simply takes ownership of 'other' instead of copying it!
  */
 void KV_AddHead(KV_Pair *list, KV_Pair *other);
 
 
 /* Appends a new subpair at the end of a list.
- * If the pair value isn't a list, it does nothing.
- * KV_PairDestroy() should *not* be called on 'other' after this because it's not copied!
+ * If the 'list' pair value isn't a list, it does nothing.
+ * KV_PairDestroy() should *not* be called on 'other' after this because 'list' simply takes ownership of 'other' instead of copying it!
  */
 void KV_AddTail(KV_Pair *list, KV_Pair *other);
 
 
-/* Insert 'pair' node before 'other' node, which may be in the middle of some list. */
+/* Insert 'pair' node before 'other' node, which may be in the middle of some list, making it a part of some existing chain. */
 void KV_InsertBefore(KV_Pair *pair, KV_Pair *other);
 
 
-/* Insert 'pair' node after 'other' node, which may be in the middle of some list. */
+/* Insert 'pair' node after 'other' node, which may be in the middle of some list, making it a part of some existing chain. */
 void KV_InsertAfter(KV_Pair *pair, KV_Pair *other);
 
 

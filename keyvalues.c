@@ -131,7 +131,7 @@ void KV_ResetError(void) {
   _iErrorSet = 0;
 };
 
-/* Sets a last error message within specific context.
+/* Sets an error message within specific context.
  * If 'ctx' is non-NULL, prepends the error message with the specified context line.
  */
 KV_INLINE void KV_SetContextError(KV_Context *ctx, size_t iLine, const char *str) {
@@ -188,7 +188,7 @@ KV_INLINE void KV_SetContextError(KV_Context *ctx, size_t iLine, const char *str
   if (strLastError) KV_free(strLastError);
 };
 
-/* Sets a generic last error message.
+/* Sets a generic error message.
  */
 KV_INLINE void KV_SetError(const char *str) {
   KV_SetContextError(NULL, 0, str);
