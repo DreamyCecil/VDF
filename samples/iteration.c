@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
   size_t i = 0;
   printf("-- Subpairs:\n");
 
-  while ((sub = KV_GetPair(list, i++)))
+  while ((sub = KV_GetPair(list, i++)) != NULL)
   {
     // Remember lists in the process
     int bList = (KV_GetDataType(sub) == KV_TYPE_NONE);

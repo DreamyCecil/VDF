@@ -85,7 +85,7 @@ KV_INLINE char *KV_strdup(const char *str) {
   if (strDup) memcpy(strDup, str, ct);
 
   return strDup;
-};
+}
 
 /* Check if it's a full path string */
 KV_INLINE KV_bool IsPathStringAbsolute(const char *str) {
@@ -99,7 +99,7 @@ KV_INLINE KV_bool IsPathStringAbsolute(const char *str) {
   /* Starts with a path separator, e.g. "/home" */
   return (str[0] == '/' || str[0] == '\\') ? KV_true : KV_false;
 #endif
-};
+}
 
 /*********************************************************************************************************************************
  * Key-value types
@@ -117,7 +117,7 @@ struct _KV_Pair {
       /* If there's only one subpair, both pointers reference the same one */
       KV_Pair *head;
       KV_Pair *tail;
-    };
+    } list;
   } _value;
 
   KV_Pair *_parent; /* Pair that owns this subpair in a list */
@@ -139,7 +139,7 @@ void KV_ResetError(void) {
 
   _strError = NULL;
   _iErrorSet = 0;
-};
+}
 
 /* Sets an error message within specific context.
  * If 'ctx' is non-NULL, prepends the error message with the specified context line.
@@ -171,15 +171,15 @@ KV_INLINE void KV_SetContextError(KV_Context *ctx, size_t iLine, const char *str
       if (ctx->_file) {
         /* Disregard the directory if it's an empty string or the file path is absolute */
         if (!*ctx->_directory || IsPathStringAbsolute(ctx->_file)) {
-          sprintf(_strError, "\"%s\" at line %ld : %s", ctx->_file, iLine, str);
+          sprintf(_strError, "\"%s\" at line %lu : %s", ctx->_file, (unsigned long)iLine, str);
 
         } else {
-          sprintf(_strError, "\"%s%s\" at line %ld : %s", ctx->_directory, ctx->_file, iLine, str);
+          sprintf(_strError, "\"%s%s\" at line %lu : %s", ctx->_directory, ctx->_file, (unsigned long)iLine, str);
         }
 
       /* Character buffer */
       } else {
-        sprintf(_strError, "(buffer) at line %ld : %s", iLine, str);
+        sprintf(_strError, "(buffer) at line %lu : %s", (unsigned long)iLine, str);
       }
 
     /* Generic error */
@@ -196,17 +196,17 @@ KV_INLINE void KV_SetContextError(KV_Context *ctx, size_t iLine, const char *str
 
   /* Free previous error string */
   if (strLastError) KV_free(strLastError);
-};
+}
 
 /* Sets a generic error message.
  */
 KV_INLINE void KV_SetError(const char *str) {
   KV_SetContextError(NULL, 0, str);
-};
+}
 
 const char *KV_GetError(void) {
   return (_iErrorSet ? _strError : "No error");
-};
+}
 
 /*********************************************************************************************************************************
  * String printer
@@ -220,26 +220,26 @@ void KV_PrinterInit(KV_Printer *ctx, size_t expansionstep) {
   ctx->_current = ctx->_buffer;
 
   ctx->_buffer[0] = '\0';
-};
+}
 
 void KV_PrinterClear(KV_Printer *ctx) {
   KV_free(ctx->_buffer);
 
   ctx->_buffer = NULL;
   ctx->_length = 0;
-};
+}
 
 char *KV_PrinterGetBuffer(KV_Printer *ctx, size_t *length) {
   if (length) *length = ctx->_length;
   return ctx->_buffer;
-};
+}
 
 void KV_PrinterResetString(KV_Printer *ctx) {
   ctx->_current = ctx->_buffer;
   ctx->_left = ctx->_length;
 
   ctx->_buffer[0] = '\0'; /* Reset to an empty string */
-};
+}
 
 KV_INLINE KV_bool KV_PrinterExpandIfNeeded(KV_Printer *ctx) {
   size_t iOffset;
@@ -262,7 +262,7 @@ KV_INLINE KV_bool KV_PrinterExpandIfNeeded(KV_Printer *ctx) {
   ctx->_left = ctx->_length - iOffset;
 
   return KV_true;
-};
+}
 
 void KV_PrinterFormat(KV_Printer *ctx, const char *format, ...) {
   va_list arg;
@@ -273,7 +273,7 @@ void KV_PrinterFormat(KV_Printer *ctx, const char *format, ...) {
   } while (KV_PrinterExpandIfNeeded(ctx));
 
   va_end(arg);
-};
+}
 
 /*********************************************************************************************************************************
  * Parser context
@@ -289,7 +289,7 @@ void KV_ContextSetupBuffer(KV_Context *ctx, const char *directory, const char *b
   ctx->_line = 1;
 
   KV_ContextSetFlags(ctx, KV_true, KV_true, KV_true);
-};
+}
 
 void KV_ContextSetupFile(KV_Context *ctx, const char *directory, const char *path) {
   ctx->_directory = directory;
@@ -301,19 +301,19 @@ void KV_ContextSetupFile(KV_Context *ctx, const char *directory, const char *pat
   ctx->_line = 0;
 
   KV_ContextSetFlags(ctx, KV_true, KV_true, KV_true);
-};
+}
 
 void KV_ContextSetFlags(KV_Context *ctx, KV_bool escapeseq, KV_bool multikey, KV_bool overwrite) {
   ctx->_escapeseq = escapeseq;
   ctx->_multikey  = multikey;
   ctx->_overwrite = overwrite;
-};
+}
 
 void KV_ContextCopyFlags(KV_Context *ctx, KV_Context *other) {
   ctx->_escapeseq = other->_escapeseq;
   ctx->_multikey  = other->_multikey;
   ctx->_overwrite = other->_overwrite;
-};
+}
 
 /* Check if the character buffer reached the end */
 KV_INLINE KV_bool KV_ContextBufferEnded(KV_Context *ctx) {
@@ -322,7 +322,7 @@ KV_INLINE KV_bool KV_ContextBufferEnded(KV_Context *ctx) {
 
   /* Reached the maximum length */
   return ((size_t)(ctx->_pch - ctx->_buffer) >= ctx->_length) ? KV_true : KV_false;
-};
+}
 
 /*********************************************************************************************************************************
  * One pair of key & value
@@ -334,13 +334,13 @@ KV_Pair *KV_NewList(const char *key) {
 
   pair->_key = (key ? KV_strdup(key) : NULL);
   pair->_type = KV_TYPE_NONE;
-  pair->_value.head = pair->_value.tail = NULL;
+  pair->_value.list.head = pair->_value.list.tail = NULL;
 
   pair->_parent = NULL;
   pair->_prev = pair->_next = NULL;
 
   return pair;
-};
+}
 
 KV_Pair *KV_NewString(const char *key, const char *value) {
   /* Allocate the pair and set new values */
@@ -356,7 +356,7 @@ KV_Pair *KV_NewString(const char *key, const char *value) {
   pair->_prev = pair->_next = NULL;
 
   return pair;
-};
+}
 
 KV_Pair *KV_NewListFrom(const char *key, KV_Pair *list) {
   /* Allocate the pair and set new values */
@@ -366,19 +366,19 @@ KV_Pair *KV_NewListFrom(const char *key, KV_Pair *list) {
 
   pair->_key = (key ? KV_strdup(key) : NULL);
   pair->_type = KV_TYPE_NONE;
-  pair->_value.head = pair->_value.tail = NULL;
+  pair->_value.list.head = pair->_value.list.tail = NULL;
   KV_CopyNodes(pair, list, KV_false);
 
   pair->_parent = NULL;
   pair->_prev = pair->_next = NULL;
 
   return pair;
-};
+}
 
 /* Free memory of the pair key without resetting the field */
 KV_INLINE void KV_FreeKey(KV_Pair *pair) {
   if (pair->_key) KV_free(pair->_key);
-};
+}
 
 /* Free all memory associated with the pair value without resetting any fields */
 KV_INLINE void KV_FreeValue(KV_Pair *pair) {
@@ -388,7 +388,7 @@ KV_INLINE void KV_FreeValue(KV_Pair *pair) {
   /* Destroy value */
   switch (pair->_type) {
     case KV_TYPE_NONE:
-      pairIter = pair->_value.head;
+      pairIter = pair->_value.list.head;
 
       /* Destroy all pairs */
       while (pairIter) {
@@ -407,7 +407,7 @@ KV_INLINE void KV_FreeValue(KV_Pair *pair) {
       assert(!"Unknown value type");
       break;
   }
-};
+}
 
 void KV_PairDestroy(KV_Pair *pair) {
   assert(pair);
@@ -419,7 +419,7 @@ void KV_PairDestroy(KV_Pair *pair) {
   KV_FreeKey(pair);
   KV_FreeValue(pair);
   KV_free(pair);
-};
+}
 
 KV_Pair *KV_PairCopy(KV_Pair *other) {
   KV_Pair *pair = (KV_Pair *)KV_malloc(sizeof(KV_Pair));
@@ -431,7 +431,7 @@ KV_Pair *KV_PairCopy(KV_Pair *other) {
 
   switch (pair->_type) {
     case KV_TYPE_NONE:
-      pair->_value.head = pair->_value.tail = NULL;
+      pair->_value.list.head = pair->_value.list.tail = NULL;
       KV_CopyNodes(pair, other, KV_false);
       break;
 
@@ -442,7 +442,7 @@ KV_Pair *KV_PairCopy(KV_Pair *other) {
     default:
       assert(!"Unknown value type");
       pair->_type = KV_TYPE_NONE;
-      pair->_value.head = pair->_value.tail = NULL;
+      pair->_value.list.head = pair->_value.list.tail = NULL;
       break;
   }
 
@@ -450,7 +450,7 @@ KV_Pair *KV_PairCopy(KV_Pair *other) {
   pair->_prev = pair->_next = NULL;
 
   return pair;
-};
+}
 
 void KV_PairClear(KV_Pair *pair) {
   assert(pair);
@@ -462,8 +462,8 @@ void KV_PairClear(KV_Pair *pair) {
   /* Reset the pair state but preserve the neighboring connections */
   pair->_key = NULL;
   pair->_type = KV_TYPE_NONE;
-  pair->_value.head = pair->_value.tail = NULL;
-};
+  pair->_value.list.head = pair->_value.list.tail = NULL;
+}
 
 void KV_SetKey(KV_Pair *pair, const char *key) {
   char *keyCopy;
@@ -482,7 +482,7 @@ void KV_SetKey(KV_Pair *pair, const char *key) {
 
   KV_FreeKey(pair);
   pair->_key = keyCopy;
-};
+}
 
 void KV_SetString(KV_Pair *pair, const char *value) {
   char *valueCopy;
@@ -497,7 +497,7 @@ void KV_SetString(KV_Pair *pair, const char *value) {
 
   pair->_type = KV_TYPE_STRING;
   pair->_value.str = valueCopy;
-};
+}
 
 void KV_SetListFrom(KV_Pair *pair, KV_Pair *list) {
   assert(pair && list);
@@ -506,9 +506,9 @@ void KV_SetListFrom(KV_Pair *pair, KV_Pair *list) {
   KV_FreeValue(pair);
 
   pair->_type = KV_TYPE_NONE;
-  pair->_value.head = pair->_value.tail = NULL;
+  pair->_value.list.head = pair->_value.list.tail = NULL;
   KV_CopyNodes(pair, list, KV_false);
-};
+}
 
 void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite) {
   KV_Pair *pairIter, *pairFind;
@@ -519,21 +519,21 @@ void KV_CopyNodes(KV_Pair *list, KV_Pair *other, KV_bool overwrite) {
     KV_FreeValue(list);
 
     list->_type = KV_TYPE_NONE;
-    list->_value.head = list->_value.tail = NULL;
+    list->_value.list.head = list->_value.list.tail = NULL;
   }
 
   /* Add copies of all subpairs to this list */
-  for (pairIter = other->_value.head; pairIter; pairIter = pairIter->_next)
+  for (pairIter = other->_value.list.head; pairIter; pairIter = pairIter->_next)
   {
     /* Replace duplicate keys */
-    if (overwrite && (pairFind = KV_FindPair(list, pairIter->_key))) {
+    if (overwrite && (pairFind = KV_FindPair(list, pairIter->_key)) != NULL) {
       KV_Replace(pairFind, pairIter);
       continue;
     }
 
     KV_AddTail(list, KV_PairCopy(pairIter));
   }
-};
+}
 
 void KV_MergeNodes(KV_Pair *list, KV_Pair *other, KV_bool moveNodes) {
   KV_Pair *pairIter, *pairFind;
@@ -543,11 +543,11 @@ void KV_MergeNodes(KV_Pair *list, KV_Pair *other, KV_bool moveNodes) {
   if (list->_type != KV_TYPE_NONE || other->_type != KV_TYPE_NONE) return;
 
   /* Add copies of non-existent subpairs to this list */
-  pairIter = other->_value.head;
+  pairIter = other->_value.list.head;
 
   while (pairIter) {
     /* Recursively merge existing subpairs */
-    if ((pairFind = KV_FindPair(list, pairIter->_key))) {
+    if ((pairFind = KV_FindPair(list, pairIter->_key)) != NULL) {
       KV_MergeNodes(pairFind, pairIter, moveNodes);
 
       /* Get the next subpair */
@@ -566,7 +566,7 @@ void KV_MergeNodes(KV_Pair *list, KV_Pair *other, KV_bool moveNodes) {
       KV_AddTail(list, KV_PairCopy(pairFind));
     }
   }
-};
+}
 
 void KV_Replace(KV_Pair *pair, KV_Pair *other) {
   assert(pair && other);
@@ -579,7 +579,7 @@ void KV_Replace(KV_Pair *pair, KV_Pair *other) {
 
   switch (pair->_type) {
     case KV_TYPE_NONE:
-      pair->_value.head = pair->_value.tail = NULL;
+      pair->_value.list.head = pair->_value.list.tail = NULL;
       KV_CopyNodes(pair, other, KV_false);
       break;
 
@@ -590,17 +590,17 @@ void KV_Replace(KV_Pair *pair, KV_Pair *other) {
     default:
       assert(!"Unknown value type");
       pair->_type = KV_TYPE_NONE;
-      pair->_value.head = pair->_value.tail = NULL;
+      pair->_value.list.head = pair->_value.list.tail = NULL;
       break;
   }
-};
+}
 
 /* Swap all struct data between two different pairs */
 KV_INLINE void KV_SwapWholePairs(KV_Pair *pair1, KV_Pair *pair2) {
   KV_Pair temp = *pair1;
   *pair1 = *pair2;
   *pair2 = temp;
-};
+}
 
 void KV_Swap(KV_Pair *pair1, KV_Pair *pair2) {
   KV_Pair *parent1, *parent2;
@@ -630,7 +630,7 @@ void KV_Swap(KV_Pair *pair1, KV_Pair *pair2) {
   pair2->_parent = parent2;
   pair2->_prev = prev2;
   pair2->_next = next2;
-};
+}
 
 /* IMPORTANT: Returned pointer needs to be manually freed! */
 KV_INLINE char *KV_ConvertEscapeSeq(char *pch) {
@@ -656,7 +656,7 @@ KV_INLINE char *KV_ConvertEscapeSeq(char *pch) {
   }
 
   return str;
-};
+}
 
 static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, const char *indentation) {
   KV_bool bValueAfterKey;
@@ -702,7 +702,7 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, co
       if (bValueAfterKey) KV_PrinterFormat(ctx, "\n%s{\n", strIndent);
 
       /* Print each pair in the list */
-      for (pairIter = pair->_value.head; pairIter; pairIter = pairIter->_next)
+      for (pairIter = pair->_value.list.head; pairIter; pairIter = pairIter->_next)
       {
         if (!KV_PrintInternal(pairIter, ctx, depth, indentation)) {
           KV_free(strIndent);
@@ -738,7 +738,7 @@ static KV_bool KV_PrintInternal(KV_Pair *pair, KV_Printer *ctx, size_t depth, co
   KV_SetError("Unknown value type");
   KV_free(strIndent);
   return KV_false;
-};
+}
 
 char *KV_Print(KV_Pair *pair, size_t *length, size_t expansionstep, const char *indentation) {
   KV_Printer printer;
@@ -751,7 +751,7 @@ char *KV_Print(KV_Pair *pair, size_t *length, size_t expansionstep, const char *
   /* Free buffer on error */
   KV_PrinterClear(&printer);
   return NULL;
-};
+}
 
 /*********************************************************************************************************************************
  * Doubly linked lists
@@ -762,8 +762,8 @@ KV_bool KV_HasNodes(KV_Pair *list) {
   assert(list);
   if (list->_type != KV_TYPE_NONE) return KV_false;
 
-  return list->_value.head ? KV_true : KV_false;
-};
+  return list->_value.list.head ? KV_true : KV_false;
+}
 
 size_t KV_GetNodeCount(KV_Pair *list) {
   size_t ct = 0;
@@ -771,9 +771,9 @@ size_t KV_GetNodeCount(KV_Pair *list) {
   /* Not a list */
   assert(list);
   assert(list->_type == KV_TYPE_NONE);
-  if (list->_type != KV_TYPE_NONE) return (size_t)(-1);
+  if (list->_type != KV_TYPE_NONE) return ((size_t)-1);
 
-  list = list->_value.head;
+  list = list->_value.list.head;
 
   while (list) {
     list = list->_next;
@@ -781,7 +781,7 @@ size_t KV_GetNodeCount(KV_Pair *list) {
   }
 
   return ct;
-};
+}
 
 KV_Pair *KV_GetPair(KV_Pair *list, size_t n) {
   /* Not a list */
@@ -789,14 +789,14 @@ KV_Pair *KV_GetPair(KV_Pair *list, size_t n) {
   assert(list->_type == KV_TYPE_NONE);
   if (list->_type != KV_TYPE_NONE) return NULL;
 
-  for (list = list->_value.head; list; list = list->_next)
+  for (list = list->_value.list.head; list; list = list->_next)
   {
     if (n == 0) return list;
     --n;
   }
 
   return NULL;
-};
+}
 
 KV_Pair *KV_FindPair(KV_Pair *list, const char *key) {
   /* Not a list */
@@ -804,13 +804,13 @@ KV_Pair *KV_FindPair(KV_Pair *list, const char *key) {
   assert(list->_type == KV_TYPE_NONE);
   if (list->_type != KV_TYPE_NONE) return NULL;
 
-  for (list = list->_value.head; list; list = list->_next)
+  for (list = list->_value.list.head; list; list = list->_next)
   {
     if (!strcmp(list->_key, key)) return list;
   }
 
   return NULL;
-};
+}
 
 KV_Pair *KV_FindPairOfType(KV_Pair *list, const char *key, KV_DataType type) {
   /* Not a list */
@@ -818,7 +818,7 @@ KV_Pair *KV_FindPairOfType(KV_Pair *list, const char *key, KV_DataType type) {
   assert(list->_type == KV_TYPE_NONE);
   if (list->_type != KV_TYPE_NONE) return NULL;
 
-  for (list = list->_value.head; list; list = list->_next)
+  for (list = list->_value.list.head; list; list = list->_next)
   {
     if (list->_type != type) continue;
 
@@ -826,7 +826,7 @@ KV_Pair *KV_FindPairOfType(KV_Pair *list, const char *key, KV_DataType type) {
   }
 
   return NULL;
-};
+}
 
 KV_bool KV_IsEmpty(KV_Pair *list, const char *key) {
   KV_Pair *pair = KV_FindPair(list, key);
@@ -838,13 +838,13 @@ KV_bool KV_IsEmpty(KV_Pair *list, const char *key) {
   if (pair->_type != KV_TYPE_NONE) return KV_false;
 
   /* Has no subpairs */
-  return list->_value.head ? KV_true : KV_false;
-};
+  return list->_value.list.head ? KV_true : KV_false;
+}
 
 const char *KV_FindString(KV_Pair *list, const char *key, const char *defaultValue) {
   KV_Pair *pair = KV_FindPairOfType(list, key, KV_TYPE_STRING);
   return (pair ? pair->_value.str : defaultValue);
-};
+}
 
 KV_Pair *KV_GetHead(KV_Pair *list) {
   /* Not a list */
@@ -852,8 +852,8 @@ KV_Pair *KV_GetHead(KV_Pair *list) {
   assert(list->_type == KV_TYPE_NONE);
   if (list->_type != KV_TYPE_NONE) return NULL;
 
-  return list->_value.head;
-};
+  return list->_value.list.head;
+}
 
 KV_Pair *KV_GetTail(KV_Pair *list) {
   /* Not a list */
@@ -861,17 +861,17 @@ KV_Pair *KV_GetTail(KV_Pair *list) {
   assert(list->_type == KV_TYPE_NONE);
   if (list->_type != KV_TYPE_NONE) return NULL;
 
-  return list->_value.tail;
-};
+  return list->_value.list.tail;
+}
 
 /* Setup the very first pair in a list */
 KV_INLINE void KV_SetFirstPair(KV_Pair *pair, KV_Pair *first) {
-  pair->_value.head = pair->_value.tail = first;
+  pair->_value.list.head = pair->_value.list.tail = first;
 
   /* Relink the pair to this list */
   KV_Expunge(first);
   first->_parent = pair;
-};
+}
 
 void KV_AddHead(KV_Pair *list, KV_Pair *other) {
   /* Not a list */
@@ -880,12 +880,12 @@ void KV_AddHead(KV_Pair *list, KV_Pair *other) {
   if (list->_type != KV_TYPE_NONE) return;
 
   /* Insert at the beginning if there is already a list */
-  if (list->_value.head) {
-    KV_InsertBefore(other, list->_value.head);
+  if (list->_value.list.head) {
+    KV_InsertBefore(other, list->_value.list.head);
   } else {
     KV_SetFirstPair(list, other);
   }
-};
+}
 
 void KV_AddTail(KV_Pair *list, KV_Pair *other) {
   /* Not a list */
@@ -894,24 +894,24 @@ void KV_AddTail(KV_Pair *list, KV_Pair *other) {
   if (list->_type != KV_TYPE_NONE) return;
 
   /* Insert at the end if there is already a list */
-  if (list->_value.tail) {
-    KV_InsertAfter(other, list->_value.tail);
+  if (list->_value.list.tail) {
+    KV_InsertAfter(other, list->_value.list.tail);
   } else {
     KV_SetFirstPair(list, other);
   }
-};
+}
 
 /* Unlink a pair from its previous neighbor */
 KV_INLINE void KV_UnlinkPrev(KV_Pair *pair) {
   if (pair->_prev != NULL) pair->_prev->_next = NULL;
   pair->_prev = NULL;
-};
+}
 
 /* Unlink a pair from its next neighbor */
 KV_INLINE void KV_UnlinkNext(KV_Pair *pair) {
   if (pair->_next != NULL) pair->_next->_prev = NULL;
   pair->_next = NULL;
-};
+}
 
 void KV_InsertBefore(KV_Pair *pair, KV_Pair *other) {
   KV_Pair *before;
@@ -922,8 +922,8 @@ void KV_InsertBefore(KV_Pair *pair, KV_Pair *other) {
   pair->_parent = other->_parent;
 
   /* Relink the parent to this new node */
-  if (other->_parent && other->_parent->_value.head == other) {
-    other->_parent->_value.head = pair;
+  if (other->_parent && other->_parent->_value.list.head == other) {
+    other->_parent->_value.list.head = pair;
   }
 
   /* Remember the node that goes before this one (may be NULL) */
@@ -939,7 +939,7 @@ void KV_InsertBefore(KV_Pair *pair, KV_Pair *other) {
     pair->_prev = before;
     before->_next = pair;
   }
-};
+}
 
 void KV_InsertAfter(KV_Pair *pair, KV_Pair *other) {
   KV_Pair *after;
@@ -950,8 +950,8 @@ void KV_InsertAfter(KV_Pair *pair, KV_Pair *other) {
   pair->_parent = other->_parent;
 
   /* Relink the parent to this new node */
-  if (other->_parent && other->_parent->_value.tail == other) {
-    other->_parent->_value.tail = pair;
+  if (other->_parent && other->_parent->_value.list.tail == other) {
+    other->_parent->_value.list.tail = pair;
   }
 
   /* Remember the node that goes after this one (may be NULL) */
@@ -967,7 +967,7 @@ void KV_InsertAfter(KV_Pair *pair, KV_Pair *other) {
     pair->_next = after;
     after->_prev = pair;
   }
-};
+}
 
 void KV_Expunge(KV_Pair *pair) {
   assert(pair);
@@ -978,29 +978,29 @@ void KV_Expunge(KV_Pair *pair) {
 
   /* Relink list head and tail */
   if (pair->_parent) {
-    if (pair->_parent->_value.head == pair) {
-      pair->_parent->_value.head = pair->_next;
+    if (pair->_parent->_value.list.head == pair) {
+      pair->_parent->_value.list.head = pair->_next;
     }
 
-    if (pair->_parent->_value.tail == pair) {
-      pair->_parent->_value.tail = pair->_prev;
+    if (pair->_parent->_value.list.tail == pair) {
+      pair->_parent->_value.list.tail = pair->_prev;
     }
   }
 
   /* Reset the links */
   pair->_parent = NULL;
   pair->_prev = pair->_next = NULL;
-};
+}
 
 KV_Pair *KV_GetPrev(KV_Pair *pair) {
   assert(pair);
   return pair->_prev;
-};
+}
 
 KV_Pair *KV_GetNext(KV_Pair *pair) {
   assert(pair);
   return pair->_next;
-};
+}
 
 /*********************************************************************************************************************************
  * Pair values
@@ -1009,18 +1009,18 @@ KV_Pair *KV_GetNext(KV_Pair *pair) {
 char *KV_GetKey(KV_Pair *pair) {
   assert(pair);
   return pair->_key;
-};
+}
 
 KV_DataType KV_GetDataType(KV_Pair *pair) {
   assert(pair);
   return pair->_type;
-};
+}
 
 char *KV_GetString(KV_Pair *pair) {
   assert(pair);
   assert(pair->_type == KV_TYPE_STRING);
   return pair->_value.str;
-};
+}
 
 /*********************************************************************************************************************************
  * Serialization
@@ -1089,7 +1089,7 @@ KV_INLINE KV_Pair *KV_ParseFileInternal(KV_Context *ctx, KV_Context *ctxParent) 
   KV_free(str);
 
   return list;
-};
+}
 
 /* IMPORTANT: Returned pointer needs to be manually freed! */
 KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
@@ -1164,7 +1164,7 @@ KV_INLINE char *KV_ParseString(KV_Context *ctx, KV_bool onlyquotes)
   str[iChar] = '\0';
 
   return str;
-};
+}
 
 /* Count line breaks */
 KV_INLINE KV_bool KV_ParseLineBreak(KV_Context *ctx)
@@ -1176,7 +1176,7 @@ KV_INLINE KV_bool KV_ParseLineBreak(KV_Context *ctx)
   }
 
   return KV_false;
-};
+}
 
 /* Comments: Ignore all characters in CPP-styled single-line comments or in C-styled block comments */
 /* NOTE: Single '/' characters with no '/' or '*' afterwards count as "empty" comments and are simply ignored */
@@ -1219,7 +1219,7 @@ KV_INLINE KV_bool KV_ParseComments(KV_Context *ctx)
 
   /* Ignored enough characters */
   return KV_true;
-};
+}
 
 KV_INLINE KV_Pair *KV_IncludeFile(KV_Context *ctx, const char *strFile) {
   /* Get the list from a file */
@@ -1228,17 +1228,17 @@ KV_INLINE KV_Pair *KV_IncludeFile(KV_Context *ctx, const char *strFile) {
   KV_ContextCopyFlags(&ctxInclude, ctx);
 
   return KV_ParseFileInternal(&ctxInclude, ctx);
-};
+}
 
 KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair *listInclude, size_t iLine) {
   KV_Pair *pairIter, *pairFind;
 
   /* Append all pairs to the current list */
-  pairIter = listInclude->_value.head;
+  pairIter = listInclude->_value.list.head;
 
   while (pairIter) {
     /* Catch duplicate keys */
-    if (!ctx->_multikey && (pairFind = KV_FindPair(list, pairIter->_key))) {
+    if (!ctx->_multikey && (pairFind = KV_FindPair(list, pairIter->_key)) != NULL) {
       /* Overwrite values under the same key */
       if (ctx->_overwrite) {
         KV_Swap(pairFind, pairIter);
@@ -1262,13 +1262,13 @@ KV_INLINE KV_bool KV_AppendIncludedPairs(KV_Context *ctx, KV_Pair *list, KV_Pair
   }
 
   return KV_true;
-};
+}
 
 KV_INLINE KV_bool KV_MergeBasePairs(KV_Pair *list, KV_Pair *listInclude) {
   /* Moving nodes over from the temporary list to the current list */
   KV_MergeNodes(list, listInclude, KV_true);
   return KV_true;
-};
+}
 
 KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *strKey) {
   KV_Pair *pairFind;
@@ -1278,7 +1278,7 @@ KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *
   if (!listTemp) return KV_false;
 
   /* Catch duplicate keys */
-  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
+  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey)) != NULL) {
     /* Overwrite values under the same key */
     if (ctx->_overwrite) {
       /* Swap the found pair with this temporary list */
@@ -1302,13 +1302,13 @@ KV_INLINE KV_bool KV_ParseInnerList(KV_Context *ctx, KV_Pair *list, const char *
   KV_AddTail(list, listTemp);
 
   return KV_true;
-};
+}
 
 KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *strKey, const char *strValue) {
   KV_Pair *pairFind;
 
   /* Catch duplicate keys */
-  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey))) {
+  if (!ctx->_multikey && (pairFind = KV_FindPair(list, strKey)) != NULL) {
     /* Overwrite values under the same key */
     if (ctx->_overwrite) {
       KV_SetString(pairFind, strValue);
@@ -1323,7 +1323,7 @@ KV_INLINE KV_bool KV_AddStringPair(KV_Context *ctx, KV_Pair *list, const char *s
   /* Append a new (or a duplicate) pair */
   KV_AddTail(list, KV_NewString(strKey, strValue));
   return KV_true;
-};
+}
 
 /* Expanding array of lists to include in the current list */
 typedef struct _KV_Includes {
@@ -1338,7 +1338,7 @@ KV_INLINE void KV_InitIncludes(KV_Includes *incl) {
   incl->aLists = NULL;
   incl->aLines = NULL;
   incl->ctArray = incl->ctUsed = 0;
-};
+}
 
 KV_INLINE void KV_DestroyIncludes(KV_Includes *incl) {
   size_t i;
@@ -1353,7 +1353,7 @@ KV_INLINE void KV_DestroyIncludes(KV_Includes *incl) {
   /* Free the arrays */
   KV_free(incl->aLists);
   KV_free(incl->aLines);
-};
+}
 
 KV_INLINE void KV_AddInclude(KV_Includes *incl, KV_Pair *list, size_t iLine) {
   assert(incl->ctUsed <= incl->ctArray);
@@ -1379,7 +1379,7 @@ KV_INLINE void KV_AddInclude(KV_Includes *incl, KV_Pair *list, size_t iLine) {
   incl->aLines[incl->ctUsed] = iLine;
 
   ++incl->ctUsed;
-};
+}
 
 KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   KV_Pair *list;
@@ -1549,7 +1549,7 @@ KV_Pair *KV_ParseBufferInternal(KV_Context *ctx, KV_bool inner) {
   KV_DestroyIncludes(&inclIncludeFiles);
   KV_DestroyIncludes(&inclBaseFiles);
   return list;
-};
+}
 
 KV_Pair *KV_Parse(KV_Context *ctx) {
   assert(ctx);
@@ -1559,7 +1559,7 @@ KV_Pair *KV_Parse(KV_Context *ctx) {
   }
 
   return KV_ParseBufferInternal(ctx, KV_false);
-};
+}
 
 KV_Pair *KV_ParseBuffer(const char *buffer, size_t length) {
   KV_Context ctx;
@@ -1568,7 +1568,7 @@ KV_Pair *KV_ParseBuffer(const char *buffer, size_t length) {
   KV_ContextSetupBuffer(&ctx, "", buffer, length);
 
   return KV_ParseBufferInternal(&ctx, KV_false);
-};
+}
 
 KV_Pair *KV_ParseFile(const char *path) {
   KV_Context ctx;
@@ -1577,7 +1577,7 @@ KV_Pair *KV_ParseFile(const char *path) {
   KV_ContextSetupFile(&ctx, "", path);
 
   return KV_ParseFileInternal(&ctx, NULL);
-};
+}
 
 KV_bool KV_Save(KV_Pair *pair, const char *path) {
   FILE *file;
@@ -1614,4 +1614,4 @@ KV_bool KV_Save(KV_Pair *pair, const char *path) {
 
   fclose(file);
   return KV_true;
-};
+}
