@@ -130,7 +130,6 @@ You can manage the library memory yourself instead of using the standard `malloc
 | `KV_calloc`      | `calloc`      | Random memory allocation with nullified data. |
 | `KV_realloc`     | `realloc`     | Random memory reallocation that preserves previous data. |
 | `KV_free`        | `free`        | Random memory freeing. |
-| `KV_strdup`      | `strdup`      | Duplication of a null-terminated string. |
 
 > [!IMPORTANT]
 > You have to redefine all of them together to ensure proper behavior.

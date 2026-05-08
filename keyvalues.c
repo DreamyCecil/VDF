@@ -74,8 +74,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   void *(*KV_calloc)(size_t ct, size_t elemSize)  = calloc;
   void *(*KV_realloc)(void *memory, size_t bytes) = realloc;
   void  (*KV_free)(void *memory)                  = free;
-  char *(*KV_strdup)(const char *str)             = strdup;
 #endif
+
+/* Duplicate a null-terminated string */
+KV_INLINE char *KV_strdup(const char *str) {
+  char *strDup;
+  size_t ct = strlen(str) + 1;
+
+  strDup = (char *)KV_malloc(ct);
+  if (strDup) memcpy(strDup, str, ct);
+
+  return strDup;
+};
 
 /* Check if it's a full path string */
 KV_INLINE KV_bool IsPathStringAbsolute(const char *str) {

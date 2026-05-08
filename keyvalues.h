@@ -71,7 +71,6 @@ extern "C" {
   extern void *(*KV_calloc)(size_t ct, size_t elemSize);
   extern void *(*KV_realloc)(void *memory, size_t bytes);
   extern void  (*KV_free)(void *memory);
-  extern char *(*KV_strdup)(const char *str);
 
 #else
   /* Use default memory management functions */
@@ -79,7 +78,6 @@ extern "C" {
   #define KV_calloc  calloc
   #define KV_realloc realloc
   #define KV_free    free
-  #define KV_strdup  strdup
 #endif
 
 
