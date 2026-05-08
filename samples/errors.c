@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   // See if an unclosed string will be detected
   printf("-- Unclosed string\n");
 
-  list = KV_ParseBuffer("\"asdf", -1);
+  list = KV_ParseBuffer("\"asdf", KV_INF_BUFFER);
 
   if (!list) {
     printf("SUCCESS - %s\n", KV_GetError());
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
   // See if removing a key from a pair and then printing it will be detected
   printf("\n-- Printing a non-list pair with no key\n");
 
-  list = KV_ParseBuffer("try this", -1);
+  list = KV_ParseBuffer("try this", KV_INF_BUFFER);
 
   if (!list) {
     printf("FAIL - %s\n", KV_GetError());
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Test list pairs with included files
-  KV_ContextSetupBuffer(&ctx, "", "#include include_1.vdf\n\nkey3 {}\n\n", -1);
+  KV_ContextSetupBuffer(&ctx, "", "#include include_1.vdf\n\nkey3 {}\n\n", KV_INF_BUFFER);
   KV_ContextSetFlags(&ctx, KV_false, KV_false, KV_false);
 
   list = KV_Parse(&ctx);

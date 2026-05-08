@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     "key1  replace_me\n"
     "key1  \"duplicate\\n\\tkey\"  \n"
     "key2  {}";
-  KV_ContextSetupBuffer(&ctx, "", example, -1);
+  KV_ContextSetupBuffer(&ctx, "", example, KV_INF_BUFFER);
 
   // Allow escape sequences and replace values under already existing keys
   KV_ContextSetFlags(&ctx, KV_true, KV_false, KV_true);

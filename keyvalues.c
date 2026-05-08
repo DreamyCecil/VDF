@@ -295,7 +295,7 @@ void KV_ContextSetupFile(KV_Context *ctx, const char *directory, const char *pat
   ctx->_directory = directory;
   ctx->_file = path;
   ctx->_buffer = NULL;
-  ctx->_length = (size_t)-1;
+  ctx->_length = KV_INF_BUFFER;
 
   ctx->_pch = NULL;
   ctx->_line = 0;
@@ -318,7 +318,7 @@ void KV_ContextCopyFlags(KV_Context *ctx, KV_Context *other) {
 /* Check if the character buffer reached the end */
 KV_INLINE KV_bool KV_ContextBufferEnded(KV_Context *ctx) {
   /* Reached a null character */
-  if (ctx->_length == (size_t)-1 && !*ctx->_pch) return KV_true;
+  if (ctx->_length == KV_INF_BUFFER && !*ctx->_pch) return KV_true;
 
   /* Reached the maximum length */
   return ((size_t)(ctx->_pch - ctx->_buffer) >= ctx->_length) ? KV_true : KV_false;

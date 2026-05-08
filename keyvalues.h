@@ -81,6 +81,10 @@ extern "C" {
 #endif
 
 
+/* Infinite buffer length (until a null character) */
+#define KV_INF_BUFFER ((size_t)-1)
+
+
 /*********************************************************************************************************************************
  * Key-value types
  *********************************************************************************************************************************/
@@ -199,8 +203,8 @@ struct _KV_Context {
 
   /* Length of the content that is being parsed.
    - If reading from a character buffer, specifies maximum buffer size.
-     Setting it to -1 makes it parse until a null character in a null-terminated string.
-   - If reading from a file, contains file size in bytes only after parsing it at least once, otherwise -1.
+     Setting it to KV_INF_BUFFER makes it parse until a null character in a null-terminated string.
+   - If reading from a file, contains file size in bytes only after parsing it at least once, otherwise KV_INF_BUFFER.
   */
   size_t _length;
 
@@ -221,7 +225,7 @@ struct _KV_Context {
  * directory - Where to include files from when using #base and #include macros.
    Empty or non-absolute paths are treated as relative to the current working directory.
  * buffer - Character buffer to read from. May or may not be null-terminated.
- * length - Maximum length of the specified character buffer. If set to -1, reads the buffer until a null character.
+ * length - Maximum length of the specified character buffer. If set to KV_INF_BUFFER, reads the buffer until a null character.
  */
 void KV_ContextSetupBuffer(KV_Context *ctx, const char *directory, const char *buffer, size_t length);
 
@@ -490,7 +494,7 @@ KV_Pair *KV_Parse(KV_Context *ctx);
  * Returns NULL on error; call KV_GetError() for more information.
  *
  * buffer - Character buffer to read from. May or may not be null-terminated.
- * length - Maximum length of the specified character buffer. If set to -1, reads the buffer until a null character.
+ * length - Maximum length of the specified character buffer. If set to KV_INF_BUFFER, reads the buffer until a null character.
  */
 KV_Pair *KV_ParseBuffer(const char *buffer, size_t length);
 

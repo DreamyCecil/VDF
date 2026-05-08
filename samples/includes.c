@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
 
   // Parse #include macros
-  list = KV_ParseBuffer(_include, -1);
+  list = KV_ParseBuffer(_include, KV_INF_BUFFER);
 
   if (!list) {
     fprintf(stderr, "%s\n", KV_GetError());
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 
 
   // Parse #base macros
-  list = KV_ParseBuffer(_base, -1);
+  list = KV_ParseBuffer(_base, KV_INF_BUFFER);
 
   if (!list) {
     fprintf(stderr, "%s\n", KV_GetError());
