@@ -912,7 +912,7 @@ void KV_InsertBefore(KV_Pair *pair, KV_Pair *other) {
   pair->_parent = other->_parent;
 
   /* Relink the parent to this new node */
-  if (other->_parent->_value.head == other) {
+  if (other->_parent && other->_parent->_value.head == other) {
     other->_parent->_value.head = pair;
   }
 
@@ -940,7 +940,7 @@ void KV_InsertAfter(KV_Pair *pair, KV_Pair *other) {
   pair->_parent = other->_parent;
 
   /* Relink the parent to this new node */
-  if (other->_parent->_value.tail == other) {
+  if (other->_parent && other->_parent->_value.tail == other) {
     other->_parent->_value.tail = pair;
   }
 
@@ -978,6 +978,7 @@ void KV_Expunge(KV_Pair *pair) {
   }
 
   /* Reset the links */
+  pair->_parent = NULL;
   pair->_prev = pair->_next = NULL;
 };
 
