@@ -227,6 +227,8 @@ char *KV_PrinterGetBuffer(KV_Printer *ctx, size_t *length) {
 void KV_PrinterResetString(KV_Printer *ctx) {
   ctx->_current = ctx->_buffer;
   ctx->_left = ctx->_length;
+
+  ctx->_buffer[0] = '\0'; /* Reset to an empty string */
 };
 
 KV_INLINE KV_bool KV_PrinterExpandIfNeeded(KV_Printer *ctx) {
